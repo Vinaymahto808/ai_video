@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "POST /session (request and response) — human_bot contract used by avatar_widget",
+  "request": {
+    "type": "object",
+    "properties": {
+      "persona": { "type": "string", "description": "persona id from GET /personas, e.g. auto-car-repair; server default when omitted" },
+      "sessionContext": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "title": { "type": "string" },
+              "model": { "type": "string", "description": "vehicle/service inferred from the host page slug or title" },
+              "source": { "const": "website_widget" }
+            },
+            "required": ["url", "source"]
+          }
+        }
+      }
+    }
+  },
+  "response": {
+    "type": "object",
+    "required": ["session_id", "greeting", "chunks"],
+    "properties": {
+      "session_id": { "type": "string" },
+      "greeting": { "type": "string" },
+      "chunks": { "type": "array", "items": { "$ref": "#/$defs/chunk" } },
+      "provider": { "type": "string", "description": "LLM provider name or 'offline'" },
+      "persona": { "type": "object", "properties": { "id": {"type":"string"}, "name": {"type":"string"}, "company": {"type":"string"}, "location": {"type":"string"}, "business_type": {"enum":["sales","service"]} },
+                   "example": { "id": "auto-car-repair", "name": "Neha", "company": "Auto Car Repair", "location": "Delhi NCR (Gurgaon, Delhi, Noida)", "business_type": "service" } }
+    }
+  },
+  "$defs": {
+    "chunk": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string" },
+        "emotion": { "enum": ["neutral", "warm", "enthusiastic", "concerned", "thinking"] },
+        "gesture": { "type": "string" }
+      }
+    }
+  }
+}

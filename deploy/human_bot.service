@@ -1,0 +1,28 @@
+[Unit]
+Description=Neha voice assistant (human_bot)
+After=network-online.target kb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=humanbot
+WorkingDirectory=/opt/video
+# Keys and settings as environment, never a file inside the repo:
+#   GROQ_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY, SIMLI_API_KEY, SIMLI_FACE_ID,
+#   HUMAN_BOT_ALLOWED_ORIGINS=https://autocarrepair.in,https://www.autocarrepair.in
+#   HUMAN_BOT_BEHIND_PROXY=1  HUMAN_BOT_SITE_MIRROR=0  KB_URL=http://127.0.0.1:4100
+EnvironmentFile=/etc/human_bot.env
+ExecStart=/usr/bin/python3 human_bot/server/app.py --host 127.0.0.1 --port 4001 --persona auto-car-repair
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadOnlyPaths=/opt/video
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

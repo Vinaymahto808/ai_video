@@ -1,0 +1,11 @@
+Path C reference clip (~10 seconds) — same person as face.jpg, same lighting
+
+- Phone on a tripod, eye level, 1080p or better, landscape or square
+- Head and shoulders in frame, plain / black background
+- Talk naturally (any line), small nods, normal blinks
+- Do not cover the mouth; no sunglasses
+- Same clothes as the still if you can
+- Start and end in a neutral pose
+- One take per brand persona if faces differ
+
+Save as brands/<id>/reference.mp4 next to that brand's face.jpg

@@ -1,0 +1,55 @@
+{
+  "name": "web-avatar-crawler",
+  "version": "0.1.0",
+  "description": "Website crawler + RAG knowledge base for AI video avatars: Crawlee/Playwright crawl, Markdown extraction, chunking, Gemini embeddings, SQLite vector store, REST search API",
+  "keywords": [
+    "crawler",
+    "rag",
+    "knowledge-base",
+    "embeddings",
+    "playwright",
+    "crawlee",
+    "sqlite",
+    "avatar",
+    "chatbot"
+  ],
+  "license": "UNLICENSED",
+  "author": "The Sachdev Group",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "web-avatar-crawler": "./bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    ".env.example",
+    "Dockerfile"
+  ],
+  "scripts": {
+    "start": "node src/server.js",
+    "serve": "node src/cli.js serve",
+    "crawl": "node src/cli.js crawl",
+    "search": "node src/cli.js search",
+    "setup": "playwright install chromium",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1",
+    "cheerio": "^1.0.0",
+    "crawlee": "^3.12.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "playwright": "^1.49.0",
+    "robots-parser": "^3.0.1",
+    "turndown": "^7.2.0"
+  }
+}

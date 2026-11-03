@@ -1,0 +1,34 @@
+# Caddy 2 reverse proxy for human_bot (+ widget files) and kb.
+# Replace bot.example.in with the real hostname; Caddy obtains the TLS certificate itself.
+
+bot.example.in {
+	encode zstd gzip
+
+	# Streaming routes: never buffer (SSE answers and chunked MP3 clips).
+	@stream path /chat /tts
+	reverse_proxy @stream 127.0.0.1:4001 {
+		flush_interval -1
+		transport http {
+			read_timeout 120s
+		}
+		header_up X-Forwarded-Host {host}
+	}
+
+	# Everything else the bot serves (session, stt, avatar relay, widget files, embed card).
+	reverse_proxy 127.0.0.1:4001 {
+		header_up X-Forwarded-Host {host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# frame-ancestors is set by the bot per HUMAN_BOT_ALLOWED_ORIGINS; do not override here.
+		-Server
+	}
+}
+
+# The knowledge service is normally NOT exposed: human_bot calls it on loopback.
+# If it must be reachable (remote crawler admin), require the admin key and keep it on a separate host name.
+# kb.example.in {
+# 	reverse_proxy 127.0.0.1:4100
+# }

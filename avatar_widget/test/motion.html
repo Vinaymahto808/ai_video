@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>avatar motion harness</title>
+<style>
+  /* Same transforms as panel.html, plus a grid portrait so translation and roll are measurable. */
+  html, body { margin: 0; background: #0e1116; }
+  .face { position: relative; width: 360px; height: 560px; overflow: hidden; background: #111; }
+  .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: translate3d(var(--tx, 0%), var(--ty, 0%), 0) rotate(var(--rot, 0deg)) scale(var(--zoom, 1.14)); transform-origin: 50% 62%; }
+  /* The real mouth patch from panel.html, so the test can prove the variables reach it. */
+  .face::after { content: ""; position: absolute; left: 50%; top: calc(68% + var(--jaw) * .8%); width: calc(8% * var(--mouth-w)); height: calc(1.1% + var(--mouth) * 5.4%); transform: translateX(-50%); border-radius: 50%; background: rgba(40,10,20,.55); filter: blur(3px); opacity: calc(var(--mouth) * .9); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="face"><img id="img" alt="" draggable="false"></div>
+<script type="module">
+  // No human_bot needed: a fake transport says "puppet", a fake speaker has no analyser.
+  // The page then drives the same pose API widget.js drives and exposes the channels for tests.
+  import { Avatar } from "../src/avatar.js";
+
+  const img = document.getElementById("img");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="560">
+    <rect width="360" height="560" fill="#1b2430"/>
+    <g stroke="#33465e" stroke-width="1" fill="none">
+      ${Array.from({ length: 14 }, (_, i) => `<path d="M0 ${i * 40}H360"/>`).join("")}
+      ${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 40} 0V560"/>`).join("")}
+    </g>
+    <circle cx="180" cy="205" r="82" fill="#c9a27a"/>
+    <rect x="146" y="286" width="68" height="54" rx="26" fill="#c9a27a"/>
+    <path d="M92 372q88-48 176 0v188H92z" fill="#2f8bff" opacity=".55"/>
+  </svg>`;
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+
+  /**
+   * Fake analyser with a switchable voice. Silent frames are flat 128s; loud frames are a square
+   * wave plus mid-band FFT energy, which is what the mouth maths consumes.
+   */
+  let loudNow = false;
+  const analyser = {
+    fftSize: 512,
+    frequencyBinCount: 256,
+    getByteTimeDomainData(buf) {
+      for (let i = 0; i < buf.length; i++) buf[i] = loudNow ? (i % 16 < 8 ? 188 : 68) : 128;
+    },
+    getByteFrequencyData(buf) {
+      for (let i = 0; i < buf.length; i++) buf[i] = loudNow && i >= 2 && i <= 44 ? 255 : 0;
+    },
+  };
+  const speaker = { analyserNode: () => analyser, ctx: { sampleRate: 48000 } };
+
+  const transport = {
+    health: async () => ({ ok: true, avatar: { ready: false } }),
+    avatar: async () => ({ ok: false }),
+    ttsUrl: () => "",
+  };
+
+  const avatar = new Avatar({ transport, speaker, portraitUrl: img.src });
+  const poses = [];
+  avatar.on("pose", (p) => poses.push({ t: Math.round(performance.now()), ...p }));
+
+  const read = () => {
+    const s = getComputedStyle(img);
+    const num = (p) => parseFloat(s.getPropertyValue(p)) || 0;
+    return { rot: num("--rot"), tx: num("--tx"), ty: num("--ty"), zoom: num("--zoom") };
+  };
+
+  /** What the mouth patch actually renders: the variable on the face plus the resolved pseudo-element. */
+  const mouth = () => {
+    const face = img.parentElement;
+    const after = getComputedStyle(face, "::after");
+    return {
+      v: parseFloat(getComputedStyle(face).getPropertyValue("--mouth")) || 0,
+      opacity: parseFloat(after.opacity) || 0,
+      height: parseFloat(after.height) || 0,
+    };
+  };
+
+  /**
+   * Exact cover test: map every container corner back through the inverse transform. The worst
+   * corner should still land inside the portrait; a negative number means the frame edge shows.
+   */
+  const cover = () => {
+    const w = img.offsetWidth;
+    const h = img.offsetHeight;
+    const inv = new DOMMatrix(getComputedStyle(img).transform).inverse();
+    const ox = w * 0.5;
+    const oy = h * 0.62; // transform-origin, matches the CSS
+    let worst = Infinity;
+    for (const [x, y] of [[0, 0], [w, 0], [0, h], [w, h]]) {
+      const p = inv.transformPoint(new DOMPoint(x - ox, y - oy));
+      const lx = p.x + ox;
+      const ly = p.y + oy;
+      worst = Math.min(worst, lx, w - lx, ly, h - ly);
+    }
+    return Math.round(worst * 100) / 100;
+  };
+
+  window.__motion = { avatar, poses, read, cover, mouth, setLoud: (v) => { loudNow = !!v; }, ready: false };
+  window.__motion.mode = await avatar.mount(document.createElement("video"), img);
+
+  // The same order widget.js calls them in: listening -> backchannel -> thinking -> speaking -> cut.
+  avatar.listen();
+  setTimeout(() => avatar.backchannel(), 250);
+  setTimeout(() => avatar.think(), 800);
+  setTimeout(() => avatar.speak({ text: "test", emotion: "warm", gesture: "nod" }), 1400);
+  setTimeout(() => avatar.cut(), 2000);
+  window.__motion.ready = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+{
+ "canvas": {
+  "width": 640,
+  "height": 852
+ },
+ "layers": {
+  "eyes_closed": {
+   "file": "eyes_closed.png",
+   "kind": "eyes",
+   "box": [
+    190,
+    187,
+    449,
+    256
+   ],
+   "closed": 1.0
+  },
+  "eyes_half": {
+   "file": "eyes_half.png",
+   "kind": "eyes",
+   "box": [
+    190,
+    187,
+    449,
+    256
+   ],
+   "closed": 0.55
+  },
+  "gaze_left": {
+   "file": "gaze_left.png",
+   "kind": "eyes",
+   "box": [
+    190,
+    187,
+    449,
+    256
+   ],
+   "gaze": [
+    -5.0,
+    0.0
+   ]
+  },
+  "gaze_right": {
+   "file": "gaze_right.png",
+   "kind": "eyes",
+   "box": [
+    190,
+    187,
+    449,
+    256
+   ],
+   "gaze": [
+    5.0,
+    0.0
+   ]
+  },
+  "gaze_up": {
+   "file": "gaze_up.png",
+   "kind": "eyes",
+   "box": [
+    190,
+    187,
+    449,
+    256
+   ],
+   "gaze": [
+    0.0,
+    -3.5
+   ]
+  },
+  "brows_up": {
+   "file": "brows_up.png",
+   "kind": "brows",
+   "box": [
+    190,
+    131,
+    450,
+    205
+   ]
+  },
+  "brows_in": {
+   "file": "brows_in.png",
+   "kind": "brows",
+   "box": [
+    190,
+    131,
+    450,
+    205
+   ]
+  },
+  "smile": {
+   "file": "../mouths/smile.png",
+   "kind": "mouth",
+   "note": "closed lips, corners lifted"
+  },
+  "head_tilt_l": {
+   "file": "head_tilt_l.png",
+   "kind": "pose"
+  },
+  "head_tilt_r": {
+   "file": "head_tilt_r.png",
+   "kind": "pose"
+  },
+  "head_down": {
+   "file": "head_down.png",
+   "kind": "pose"
+  },
+  "head_up": {
+   "file": "head_up.png",
+   "kind": "pose"
+  },
+  "lean_in": {
+   "file": "lean_in.png",
+   "kind": "pose"
+  }
+ },
+ "note": "Warps of prepared/face.jpg (no model). eyes/brows layers composite over base.png (or over a mouth shape) in the card's puppet; poses are whole frames."
+}

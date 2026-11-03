@@ -1,0 +1,13 @@
+{
+  "comment": "Paste the Ready Player Me .glb URL made from tran_moment/face.jpg. Until then the demo uses a stock female RPM model (same morph targets the widget needs).",
+  "url": "https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?morphTargets=ARKit,Oculus+Visemes,mouthOpen,mouthSmile,eyesClosed,eyesLookUp,eyesLookDown&textureSizeLimit=1024&textureFormat=png",
+  "body": "F",
+  "avatarMood": "neutral",
+  "lipsyncLang": "en",
+  "cameraView": "head",
+  "brands": {
+    "galaxy_toyota": { "mood": "happy" },
+    "hans_hyundai": { "mood": "happy" },
+    "autocarrepair": { "mood": "neutral" }
+  }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reaction clips — trainer view</title>
+<style>
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;background:#0e1420;color:#dfe7f3}
+  header{padding:14px 22px;border-bottom:1px solid #1f2a3c;display:flex;gap:16px;align-items:baseline;flex-wrap:wrap}
+  header b{color:#fff;font-size:17px} header span{font-size:12.5px;color:#8fa0bb}
+  main{display:grid;grid-template-columns:1fr 400px;gap:18px;padding:18px 22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .clip{background:#131c2c;border:1px solid #1f2a3c;border-radius:12px;overflow:hidden}
+  .clip video{width:100%;aspect-ratio:9/16;object-fit:cover;display:block;background:#000}
+  .clip .meta{padding:8px 10px;font-size:11.5px;line-height:1.45}
+  .clip .meta b{color:#fff;display:block;font-size:12.5px}
+  .clip .meta i{color:#8fa0bb;font-style:normal}
+  .tag{display:inline-block;margin:2px 3px 0 0;padding:1px 6px;border-radius:5px;background:#1d2a40;color:#9fc4ff;font-size:10.5px}
+  .tag.state{background:#1d3a2c;color:#8fe3b4}
+  aside{position:sticky;top:18px;align-self:start}
+  .card{width:320px;height:min(480px,calc(100vh - 150px));height:min(480px,calc(100dvh - 150px));background:#000;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .card iframe{width:100%;height:100%;border:0}
+  .fire{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+  .fire button{background:#1d2a40;color:#dfe7f3;border:1px solid #2b3b57;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+  .fire button:hover{background:#27385a}
+  .fire button.state{border-color:#2f6b4a;color:#8fe3b4}
+  .note{font-size:11.5px;color:#8fa0bb;margin-top:10px;line-height:1.5}
+  #cur{font-family:Consolas,monospace;color:#8fe3b4}
+</style>
+</head>
+<body>
+<header><b>Reaction clips</b><span>Every loop the avatar can show, with the states/gestures that trigger it. Press a button to fire it in the live card →</span></header>
+<main>
+  <section>
+    <div class="grid" id="grid"></div>
+    <p class="note">Mapping lives in <code>tran_moment/prepared/clips/manifest.json</code> (gesture → clips) and the persona's <code>avatar.gestures</code> (emotion → gesture). Edit, reload. Clips here are the test set — see <code>IDLE_SOURCE.md</code> for the consent note.</p>
+  </section>
+  <aside>
+    <div class="card"><iframe id="card" src="/embed?persona=auto-car-repair" allow="microphone; autoplay"></iframe></div>
+    <div class="fire" id="fire"></div>
+    <p class="note">Card state: <span id="cur">—</span></p>
+  </aside>
+</main>
+<script>
+(async () => {
+  const SET = (new URLSearchParams(location.search).get("set") || "neha").replace(/[^a-z0-9_]/g, "");
+  const Q = "?set=" + SET;
+  document.querySelector("header b").textContent = "Reaction clips · " + SET;
+  document.getElementById("card").src = "/embed?persona=auto-car-repair&clips=" + SET;
+  const m = await (await fetch("/avatar_clips/manifest.json" + Q)).json();
+  const files = new Map(); // file -> {states:[], gestures:[]}
+  const touch = (f) => files.get(f) || files.set(f, { states: [], gestures: [] }).get(f);
+  for (const [s, list] of Object.entries(m.states || {})) list.forEach((f) => touch(f).states.push(s));
+  for (const [g, list] of Object.entries(m.gestures || {})) list.forEach((f) => touch(f).gestures.push(g));
+  const grid = document.getElementById("grid");
+  for (const [f, u] of files) {
+    const d = document.createElement("div"); d.className = "clip";
+    d.innerHTML = `<video src="/avatar_clips/${f}${Q}" muted loop autoplay playsinline></video>
+      <div class="meta"><b>${f.replace(".mp4", "")}</b>
+      ${u.states.map((s) => `<span class="tag state">${s}</span>`).join("")}${u.gestures.map((g) => `<span class="tag">${g}</span>`).join("")}
+      <i id="d-${f.replace(".mp4", "")}"></i></div>`;
+    grid.appendChild(d);
+    d.querySelector("video").addEventListener("loadedmetadata", (e) => { document.getElementById("d-" + f.replace(".mp4", "")).textContent = e.target.duration.toFixed(1) + " s · " + e.target.videoWidth + "×" + e.target.videoHeight; });
+  }
+  const fire = document.getElementById("fire");
+  const card = document.getElementById("card");
+  const send = (msg) => card.contentWindow.postMessage({ type: "hhbot:react", ...msg }, location.origin);   // the card only accepts same-origin / host-origin messages
+  for (const s of Object.keys(m.states || {})) { const b = document.createElement("button"); b.className = "state"; b.textContent = s; b.onclick = () => send({ state: s, once: s === "greeting" }); fire.appendChild(b); }
+  for (const g of Object.keys(m.gestures || {})) { const b = document.createElement("button"); b.textContent = "talk · " + g; b.onclick = () => send({ state: "talking", gesture: g }); fire.appendChild(b); }
+  window.addEventListener("message", (e) => { if (e.data?.type === "hhbot:react:state") document.getElementById("cur").textContent = `${e.data.state} / ${e.data.clip}`; });
+})();
+</script>
+</body>
+</html>

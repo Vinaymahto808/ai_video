@@ -1,0 +1,14 @@
+# Live probes, 2026-11-01 (curl, UA Chrome/130). 000 = DNS/connect failure.
+200 https://www.iamdave.ai/                         284936 B  WordPress 6 + Elementor Pro 3.30 + WP Rocket; no widget
+200 https://www.iamdave.ai/platform/                297556 B  marketing only
+200 https://www.iamdave.ai/solutions/gryd/          298352 B  marketing only
+200 https://www.iamdave.ai/solutions/virtual-sales-avatar/ 300441 B  marketing only (FAQ: "user-friendly API"; devices: Website/Mobile/AR-VR/Kiosk; platforms: WhatsApp/Google/Meta/Telegram)
+200 https://www.iamdave.ai/stories/maruti-suzuki/   207031 B  case study, no embed
+200 https://www.iamdave.ai/stories/byd/             203636 B  links to wa.me/917303950845 (WhatsApp bot) and autongage.com
+200 https://www.iamdave.ai/gryd/                    330403 B  marketing only
+000 https://docs.iamdave.ai/   000 https://api.iamdave.ai/   000 https://apps.iamdave.ai/   000 https://cdn.iamdave.ai/   000 https://gryd.iamdave.ai/
+200 https://www.marutisuzuki.com/ , /swift , https://www.nexaexperience.com/ , https://www.heromotocorp.com/en-in.html : no iamdave/dave.ai/i2ce references today
+Wayback: api.iamdave.ai 2019-12-16 = "Dave.Ai Intelligent Sales Companion" login portal (SocioGraph Solutions), static assets on d2cnp23b72g6na.cloudfront.net; only /, /login, /page/* captured
+Wayback: dev.iamdave.ai 2024-09-13 = staging copy of the WordPress site
+Wayback: nexaexperience.com 2022-05-25 (206 KB): no DaveAI reference
+npm search "iamdave": 0 packages.  GitHub repo search "iamdave"/"dave.ai avatar": none by the vendor.  No archived docs.iamdave.ai.

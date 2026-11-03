@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Path A — TalkingHead (CPU)</title>
+  <style>
+    :root { --bg: #0f1218; --card: #1a2030; --ink: #eef2ff; --muted: #9aa6c2; --accent: #e31e24; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 15px/1.45 system-ui, Segoe UI, sans-serif; background: var(--bg); color: var(--ink); }
+    header { padding: 16px 20px 8px; }
+    header p { margin: 6px 0 0; color: var(--muted); max-width: 42em; }
+    .row { display: flex; gap: 20px; flex-wrap: wrap; padding: 0 20px 24px; align-items: flex-start; }
+    #avatar {
+      width: 240px; height: 240px; border-radius: 50%; overflow: hidden;
+      background: #111; box-shadow: 0 0 0 3px #2a3348;
+    }
+    .panel { flex: 1; min-width: 260px; background: var(--card); border-radius: 12px; padding: 16px; }
+    button, select {
+      background: #2a3348; color: var(--ink); border: 0; border-radius: 8px;
+      padding: 8px 12px; margin: 0 6px 8px 0; cursor: pointer;
+    }
+    button.primary { background: var(--accent); }
+    button:disabled { opacity: .45; cursor: default; }
+    textarea { width: 100%; min-height: 72px; background: #111827; color: var(--ink); border: 1px solid #334; border-radius: 8px; padding: 8px; }
+    #status { color: var(--muted); font-size: 13px; margin-top: 8px; }
+    .hint { font-size: 13px; color: var(--muted); }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js/+esm",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "talkinghead": "https://cdn.jsdelivr.net/gh/met4citizen/TalkingHead@1.7/modules/talkinghead.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Path A — browser 3D avatar</h1>
+    <p>Renders on this device (no server GPU). Replace the stock Ready Player Me URL in <code>avatar.json</code> with the GLB you export from <code>face.jpg</code>. If WebGL fails, the live widget must drop to voice-only.</p>
+  </header>
+  <div class="row">
+    <div id="avatar" aria-label="3D avatar"></div>
+    <div class="panel">
+      <label>Brand
+        <select id="brand">
+          <option value="galaxy_toyota">Galaxy Toyota</option>
+          <option value="hans_hyundai">Hans Hyundai</option>
+          <option value="autocarrepair">Auto Car Repair</option>
+        </select>
+      </label>
+      <div>
+        <button type="button" data-mood="neutral">Neutral</button>
+        <button type="button" data-mood="happy">Happy</button>
+        <button type="button" id="nod">Nod</button>
+        <button type="button" id="blink">Blink</button>
+      </div>
+      <textarea id="text">Namaste! Main Galaxy Toyota se baat kar rahi hoon. Aap kis Toyota model ke baare mein jaanna chahenge?</textarea>
+      <div>
+        <button type="button" class="primary" id="speak" disabled>Speak greeting</button>
+        <button type="button" id="stop" disabled>Stop</button>
+      </div>
+      <p class="hint">Speak uses the browser voice plus a CPU viseme map (Oculus shapes). For production, pass Gemini/Piper audio into <code>head.speakAudio()</code>.</p>
+      <div id="status">Loading avatar…</div>
+    </div>
+  </div>
+  <script type="module">
+    import { TalkingHead } from "talkinghead";
+
+    const status = document.getElementById("status");
+    const speakBtn = document.getElementById("speak");
+    const stopBtn = document.getElementById("stop");
+    let head;
+    let cfg;
+
+    function visemesFromText(text) {
+      const visemes = [], vtimes = [], vdurations = [];
+      let t = 0;
+      const step = 70;
+      for (const raw of text) {
+        const ch = raw.toLowerCase();
+        let v = null;
+        if ("aàáअआा".includes(ch)) v = "aa";
+        else if ("eéèएऐेै".includes(ch)) v = "E";
+        else if ("iyइईिी".includes(ch)) v = "I";
+        else if ("oóòओऔोौ".includes(ch)) v = "O";
+        else if ("uwउऊुू".includes(ch)) v = "U";
+        else if ("mbpमबप".includes(ch)) v = "PP";
+        else if ("fvफ".includes(ch)) v = "FF";
+        else if ("lल".includes(ch)) v = "nn";
+        else if (/[a-z\u0900-\u097F]/.test(ch)) v = "DD";
+        else if (/\s/.test(ch)) v = "sil";
+        if (!v) continue;
+        visemes.push(v);
+        vtimes.push(t);
+        vdurations.push(step);
+        t += step;
+      }
+      visemes.push("sil");
+      vtimes.push(t);
+      vdurations.push(120);
+      return { visemes, vtimes, vdurations };
+    }
+
+    function silentBuffer(ms) {
+      const ctx = head.audioCtx || new AudioContext();
+      const n = Math.max(1, Math.ceil(ctx.sampleRate * ms / 1000));
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      return buf;
+    }
+
+    async function boot() {
+      cfg = await fetch("./avatar.json").then((r) => r.json());
+      head = new TalkingHead(document.getElementById("avatar"), {
+        lipsyncModules: ["en"],
+        cameraView: cfg.cameraView || "head",
+        cameraDistance: 0,
+        modelFPS: 30,
+        avatarMood: cfg.avatarMood || "neutral"
+      });
+      await head.showAvatar({
+        url: cfg.url,
+        body: cfg.body || "F",
+        avatarMood: cfg.avatarMood || "neutral",
+        lipsyncLang: cfg.lipsyncLang || "en"
+      }, (ev) => {
+        if (ev.lengthComputable) {
+          status.textContent = "Loading " + Math.round(ev.loaded / ev.total * 100) + "%";
+        }
+      });
+      status.textContent = "Ready. Rendering on this device.";
+      speakBtn.disabled = false;
+      stopBtn.disabled = false;
+    }
+
+    document.getElementById("brand").addEventListener("change", (e) => {
+      const mood = (cfg.brands && cfg.brands[e.target.value] || {}).mood || "neutral";
+      head.setMood(mood);
+      status.textContent = "Mood → " + mood;
+    });
+    document.querySelectorAll("[data-mood]").forEach((btn) => {
+      btn.addEventListener("click", () => { head.setMood(btn.dataset.mood); status.textContent = "Mood → " + btn.dataset.mood; });
+    });
+    document.getElementById("nod").addEventListener("click", () => head.playGesture("nod"));
+    document.getElementById("blink").addEventListener("click", () => {
+      try { head.blink(250); } catch (_) { head.playGesture && head.playGesture("think"); }
+    });
+    speakBtn.addEventListener("click", async () => {
+      const text = document.getElementById("text").value.trim();
+      if (!text) return;
+      head.setMood("happy");
+      const vis = visemesFromText(text);
+      const total = vis.vtimes[vis.vtimes.length - 1] + vis.vdurations[vis.vdurations.length - 1];
+      try {
+        head.speakAudio({ audio: silentBuffer(total), visemes: vis.visemes, vtimes: vis.vtimes, vdurations: vis.vdurations });
+      } catch (err) {
+        status.textContent = "speakAudio failed: " + err;
+      }
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = /[\u0900-\u097F]/.test(text) ? "hi-IN" : "en-IN";
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    });
+    stopBtn.addEventListener("click", () => {
+      speechSynthesis.cancel();
+      try { head.stopSpeaking(); } catch (_) {}
+    });
+
+    boot().catch((err) => {
+      status.textContent = "Avatar failed — use voice-only fallback. " + err;
+      speakBtn.disabled = true;
+    });
+  </script>
+</body>
+</html>

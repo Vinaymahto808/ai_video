@@ -1,0 +1,33 @@
+{
+  "browser": {
+    "mode": "launch",
+    "executable_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "headless": true
+  },
+  "start_url": { "url": "https://www.iamdave.ai/solutions/virtual-sales-avatar/", "query": [] },
+  "environment": {
+    "viewport": { "width": 1366, "height": 900, "device_scale_factor": 1 },
+    "locale": "en-IN",
+    "timezone": "Asia/Kolkata",
+    "color_scheme": "light",
+    "reduced_motion": "no-preference",
+    "service_workers": "allow"
+  },
+  "actions": [
+    { "step_id": "settle_avatar_page", "action": "wait_for_timeout", "duration_ms": 4000 },
+    { "step_id": "interact_click_avatar", "action": "click", "locator": { "kind": "css", "selector": "body" }, "button": "left", "click_count": 1, "timeout_ms": 15000 },
+    { "step_id": "interact_key_avatar", "action": "press", "locator": { "kind": "css", "selector": "body" }, "key": "ArrowDown", "timeout_ms": 15000 },
+    { "step_id": "after_interact_avatar", "action": "wait_for_timeout", "duration_ms": 15000 },
+    { "step_id": "goto_home", "action": "goto", "destination": { "url": "https://www.iamdave.ai/", "query": [] }, "wait_until": "load", "timeout_ms": 60000 },
+    { "step_id": "settle_home", "action": "wait_for_timeout", "duration_ms": 4000 },
+    { "step_id": "interact_click_home", "action": "click", "locator": { "kind": "css", "selector": "body" }, "button": "left", "click_count": 1, "timeout_ms": 15000 },
+    { "step_id": "interact_key_home", "action": "press", "locator": { "kind": "css", "selector": "body" }, "key": "ArrowDown", "timeout_ms": 15000 },
+    { "step_id": "after_interact_home", "action": "wait_for_timeout", "duration_ms": 15000 }
+  ],
+  "capture": {
+    "after_each_step": ["url"],
+    "at_end": ["url", "dom", "storage"],
+    "events": ["console", "page-errors", "network", "websockets", "frames", "workers", "popups"],
+    "network": { "request_body": false, "response_body": false, "header_values": false }
+  }
+}

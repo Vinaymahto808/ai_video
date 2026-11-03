@@ -1,0 +1,17 @@
+{
+  "source": "C:\\Users\\Galaxy\\Desktop\\VIDEO\\tran_moment\\face.jpg",
+  "prepared_jpg": "C:\\Users\\Galaxy\\Desktop\\VIDEO\\tran_moment\\prepared\\face.jpg",
+  "prepared_json": "C:\\Users\\Galaxy\\Desktop\\VIDEO\\tran_moment\\prepared\\face.json",
+  "checklist": {
+    "one_face": true,
+    "saved_srgb": true,
+    "note": "MediaPipe found exactly one face. Re-read FACE_AVATAR_SETUP.md for lighting / resolution / consent."
+  },
+  "width": 640,
+  "height": 852,
+  "mouth_width_px": 96.5,
+  "approx_face_width_px": 287.3,
+  "meets_512_on_face": false,
+  "mouth_open_ratio": 0.142,
+  "mouth_open_warning": true
+}

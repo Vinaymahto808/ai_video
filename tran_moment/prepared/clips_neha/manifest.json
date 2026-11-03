@@ -1,0 +1,24 @@
+{
+  "_note": "Neha reaction set, synthesized from prepared/face.jpg (CGI portrait) with ffmpeg motion — breathing zoom, nods, tilt, lean-in. No real person, no consent issue (licence check for commercial use of the AI portrait still applies, see CONSENT.md). Same keys as clips/manifest.json; a talking-head renderer can replace these files one by one.",
+  "version": 1,
+  "set": "neha",
+  "crossfade_ms": 350,
+  "states": {
+    "idle": ["idle.mp4"],
+    "greeting": ["greeting.mp4"],
+    "listening": ["small_nod.mp4"],
+    "thinking": ["look_up.mp4"]
+  },
+  "gestures": {
+    "idle": ["idle.mp4"],
+    "pause": ["idle.mp4"],
+    "small_nod": ["small_nod.mp4"],
+    "nod": ["small_nod.mp4", "open_palm.mp4"],
+    "slow_nod": ["slow_nod.mp4"],
+    "tilt_head": ["slow_nod.mp4", "open_palm.mp4"],
+    "open_palm": ["open_palm.mp4"],
+    "both_hands": ["both_hands.mp4"],
+    "lean_in": ["both_hands.mp4"],
+    "look_up": ["look_up.mp4"]
+  }
+}

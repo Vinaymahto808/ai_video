@@ -1,0 +1,102 @@
+{
+  "source": "training\\conversations.jsonl",
+  "rows_read": 14,
+  "rows_dropped_unparseable": 0,
+  "rows_dropped_duplicate": 0,
+  "rows_kept": 14,
+  "split": {
+    "train": 13,
+    "val": 1
+  },
+  "tags": {
+    "hinglish": 9,
+    "sales_discovery": 3,
+    "clarification": 1,
+    "english": 3,
+    "price": 3,
+    "tool_use": 7,
+    "hindi": 2,
+    "context_anaphora": 2,
+    "emi": 1,
+    "test_drive": 1,
+    "human_handoff": 1,
+    "offer": 1,
+    "unknown_information": 1,
+    "refuse_to_guess": 3,
+    "price_missing": 1,
+    "features": 1,
+    "rag": 1,
+    "unknown_model": 1,
+    "lead": 1
+  },
+  "assistant_turns": 15,
+  "avg_words_per_turn": 35.6,
+  "median_words_per_turn": 36,
+  "pct_over_budget": 26.7,
+  "style_flags": {
+    "too_long": 4,
+    "written_money": 5,
+    "no_terminal_punct": 1
+  },
+  "flagged_examples": [
+    {
+      "row": 2,
+      "turn": 4,
+      "flags": [
+        "too_long:54w",
+        "written_money"
+      ],
+      "text": "The Toyota Glanza is priced from ₹6.46 lakh to ₹9.64 lakh ex-showroom Delhi, across its petrol and CNG variants. The on-road price with RTO "
+    },
+    {
+      "row": 3,
+      "turn": 4,
+      "flags": [
+        "too_long:45w",
+        "written_money"
+      ],
+      "text": "Toyota Glanza की दिल्ली में एक्स-शोरूम कीमत ₹6.46 लाख से ₹9.64 लाख तक है। RTO और बीमा सहित ऑन-रोड कीमत मेरे सत्यापित डेटा में नहीं है — सटीक"
+    },
+    {
+      "row": 4,
+      "turn": 6,
+      "flags": [
+        "written_money"
+      ],
+      "text": "Glanza ka ex-showroom price Delhi mein ₹6.46 lakh se ₹9.64 lakh tak hai, variant ke hisaab se. On-road price mere verified data mein nahi ha"
+    },
+    {
+      "row": 5,
+      "turn": 4,
+      "flags": [
+        "too_long:60w",
+        "written_money"
+      ],
+      "text": "Glanza E (sabse kam price wala variant) ke liye indicative EMI: price ₹6,46,000 ex-showroom Delhi, 10% down payment ₹64,600, loan ₹5,81,400 "
+    },
+    {
+      "row": 6,
+      "turn": 4,
+      "flags": [
+        "no_terminal_punct"
+      ],
+      "text": "Zaroor — Glanza ki test drive Moti Nagar showroom par arrange kar dete hain. Kaunsi date theek rahegi: 2026-10-04, 2026-10-05 ya 2026-10-06?"
+    },
+    {
+      "row": 11,
+      "turn": 2,
+      "flags": [
+        "too_long:44w"
+      ],
+      "text": "Toyota Corolla abhi hamare verified catalogue mein nahi hai (yeh model India mein discontinued hai). Hamare current models: Glanza, Taisor, "
+    },
+    {
+      "row": 12,
+      "turn": 4,
+      "flags": [
+        "written_money"
+      ],
+      "text": "15 लाख तक 7 सीटर के लिए Toyota Rumion सबसे उपयुक्त है — MPV, 7 सीटें, पेट्रोल और CNG विकल्प, एक्स-शोरूम दिल्ली ₹9.55 लाख से ₹13.86 लाख। क्या"
+    }
+  ]
+}

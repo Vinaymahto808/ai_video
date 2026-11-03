@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "window.postMessage protocol between loader.js (host page, shadow DOM) and panel.html (iframe)",
+  "host_to_panel": {
+    "aw:ctx":   { "ctx": { "page": { "url": "string", "title": "string", "model": "string", "source": "website_widget" } }, "when": "right after the iframe loads and on every open()" },
+    "aw:open":  { "when": "launcher clicked / AvatarWidget.open()" },
+    "aw:close": { "when": "panel hidden by host (Esc, launcher toggle, AvatarWidget.close())" }
+  },
+  "panel_to_host": {
+    "aw:ready":  { "mode": "live|puppet", "persona": "string" },
+    "aw:state":  { "state": "idle|connecting|greeting|listening|thinking|speaking|ended|error" },
+    "aw:close":  { "when": "user pressed the end-call icon" },
+    "aw:lead":   { "session_id": "string", "turns": "integer", "when": "call ended; host may forward to CRM — transcript itself is not sent (not persisted)" },
+    "aw:error":  { "message": "string" }
+  },
+  "security": "loader validates event.origin === panel origin; panel validates event.origin === host origin received in aw:ctx. No wildcard targets in production."
+}

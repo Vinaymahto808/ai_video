@@ -1,0 +1,61 @@
+feature,area,priority,original,clone,notes
+Drop-in script + mount call with widget id,embed,must,yes,yes,human_bot/web/widget.js one tag; AIVA uses mountWidget({id})
+Floating launcher and host-button form factors,embed,must,yes,yes,data-* attrs vs form_factor:"button"
+sessionContext injection (page/product/price/stock/user) read by the prompt,embed,must,yes,partial,/session accepts sessionContext; keys not yet surfaced as prompt text per AIVA rule
+Page/URL allowlist for where the widget shows,embed,should,yes,no,whitelisted_pages
+Welcome video + salutation + rotating trigger messages on launcher,visitor,should,yes,partial,teaser text only; no welcome video
+Channel picker: video / audio / chat / schedule / WhatsApp,visitor,must,yes,no,single mode today
+Skip welcome screen (one-click into the call),visitor,must,yes,yes,panel opens straight to greeting
+Lead capture form (pre-call or delayed in-call) with custom fields,lead,must,yes,no,no capture at all; AIVA default 2 s in-call delay
+OTP verification of mobile number,lead,should,yes,no,otp_verified in webhook payload
+Capture URL params / cookies / location into the lead,lead,should,yes,no,utm_campaign; widget_city/state
+Camera/mic permission handling with recovery copy per OS,visitor,must,yes,no,iOS cancel vs Android blocked states
+Connecting/wait messages and AI waiting hints,visitor,must,yes,no,wait_messages + ai_call_waiting_hints
+Call timeout and no-agent fallback messages,visitor,must,yes,no,timeout_message / agent_unavailable_message
+AI video agent: talking-head persona in a live call,agent,must,yes,partial,photo avatar with mouth layers (tran_moment path B); no neural face
+AI audio-only agent,agent,must,yes,yes,current mode effectively
+Portrait-mode persona for mobile,agent,should,yes,no,enable_portrait_mode_aiva
+Configurable greeting line per widget,agent,must,yes,yes,persona JSON
+Streaming replies spoken sentence by sentence,agent,must,yes,yes,SSE + sentence flush
+Streaming ASR (server-side) in Hindi/Hinglish/English,agent,must,yes,no,browser webkitSpeechRecognition only
+Barge-in: stop speaking when the visitor talks,agent,must,yes,yes,generation counter cancel
+Backchannels / fillers while visitor speaks,agent,should,yes,yes,pick_backchannel
+Live captions of both sides during the call,agent,should,yes,partial,transcript list in demo panel
+Knowledge from free-text context + FAQ list + structured per-page JSON,agent,must,yes,partial,persona offline.models price list only; no FAQ or per-page context
+Multilingual with Indic languages,agent,must,yes,partial,Hinglish prompt; no language switch mid-call
+Persona library (role + industry tone),agent,could,yes,partial,two brand personas
+AI tool: book a slot / test drive during the call,tools,must,yes,no,is_ai_schedule_call
+AI tool: transfer to a human agent,tools,must,yes,no,is_ai_transfer_to_agent
+AI tool: show content / screen-share a page or image,tools,could,yes,no,is_ai_screenshare_tool + screenshare_context
+AI failure message and graceful fallback when the agent cannot connect,agent,must,yes,partial,OfflineBrain fallback for LLM; nothing for voice/transport
+Human handover: agent joins the same call room,handover,must,yes,no,requires real transport (WebRTC)
+Hybrid mode: AI alongside a real agent; agent "Take Over",handover,should,yes,no,is_enable_ai_video_call_agent_with_real_agent
+AI only when humans offline (human-first) / AI-first with human backup,handover,must,yes,no,*_offline flags; aiva_backup
+Agent routing: default agents / form-based / location / time-based; working hours,handover,should,yes,no,
+Agent incoming-call alert on desktop + mobile push,handover,should,yes,no,
+Agent in-call screen: notes / hold / record / transfer / share link / feedback form,handover,should,yes,no,
+Proactive nudge on dwell / repeat visits / exit intent (Strike),entry,should,yes,no,only as trigger into the AI call
+Schedule-a-call channel with slot picker + invite friends + email/WhatsApp confirm,scheduling,should,yes,no,
+Leave-a-message / WhatsApp fallback when nobody is available,visitor,should,yes,no,
+Post-call thank-you + visitor feedback (text/form/audio/video),visitor,could,yes,no,
+Call recording (auto record),ops,should,yes,no,
+Transcript per call stored with the lead,postcall,must,yes,partial,messages kept in RAM session only
+AI report: summary + sentiment (+segments) + keywords + questions + action items,postcall,must,yes,yes,postcall/analyze.py matches the policy contract
+HOT/WARM/COLD grading with weighted qualification questions,postcall,must,yes,yes,
+Conversation audit (5 dimensions; /5 and /10 scores) fed back into prompt,postcall,should,yes,partial,audit emitted; no feedback loop into persona
+Lead record: status/type chips (tenant-defined) + ai_lead_status + dispositions,lead,must,yes,no,no persistence at all
+Lead timeline: conversations / meetings / forms / WhatsApp,lead,should,yes,no,
+Tasks / follow-up reminders on a lead,lead,could,yes,no,
+Sale-converted marking with product id + comment,lead,could,yes,no,
+"Webhooks per event (lead added/updated, form captured, bot handover, meeting ended, recording available)",integrations,must,yes,no,
+"Public API with key/secret: leads filter, conversations, meetings, transcripts",integrations,should,yes,no,
+CRM push (Bitrix24 for TSG) via webhook mapping,integrations,must,yes,no,AIVA maps fields per widget
+"Admin: AI Bot settings (allow AI, name, context, FAQ, voice, avatar, vendors)",admin,must,yes,partial,JSON files edited by hand
+Admin: visitor copy editor (welcome/trigger/wait/timeout/missed/thank-you),admin,should,yes,no,
+Admin: channels/live-offline mix/agents/hours per widget,admin,should,yes,no,
+Analytics: calls / leads / conversions attributed to the widget,analytics,could,yes,no,
+Conversion tracking call from host site (purchase/refund),analytics,could,yes,no,saleassist.track equivalent
+Tavus/Agora Conversational AI/OpenAI as the AI stack,vendor,skip,yes,skip,vendor choice not a feature; pick your own
+Their persona faces and voices,assets,skip,yes,skip,use consented Neha voice + own portrait
+Shopify/Wix/mobile SDK distribution,distribution,skip,yes,skip,out of scope by request
+Pricing and plans,commercial,skip,yes,skip,out of scope by request

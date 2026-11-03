@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Talk to sales</title>
+<style>
+  :root {
+    --accent:#0b2f6b; --accent-2:#1b56c4;
+    --bg:#ffffff; --ink:#0d1520; --dim:#66748a;
+    --line:#e3e8ef; --bot:#f3f6fa; --user:#0b2f6b;
+  }
+  /* Layout: a portrait "video call" card. The avatar fills the whole card; name, captions and
+     controls are overlays. Voice-first — the text box is hidden behind a keyboard toggle. */
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    margin:0; background:#000; color:#fff;
+    font:13px/1.45 "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+    position:relative; overflow:hidden;
+  }
+  /* Compact card (2026-11-02): tighter header, captions and controls so the portrait keeps the room. */
+  header {
+    position:absolute; top:0; left:0; right:0; z-index:3; display:flex; align-items:center; gap:8px;
+    padding:8px 8px 14px 10px; background:linear-gradient(180deg, rgba(4,8,14,.62), rgba(4,8,14,0));
+  }
+  .ava { width:26px; height:26px; border-radius:50%; object-fit:cover; object-position:50% 15%; border:2px solid rgba(255,255,255,.75); background:#0a0f16; }
+  .who { min-width:0; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .who b { display:block; font-size:12.5px; font-weight:650; letter-spacing:.1px; }
+  .who span { display:block; font-size:10px; color:rgba(255,255,255,.75); }
+  .live { margin-left:auto; display:flex; align-items:center; gap:5px; font-size:10px; color:rgba(255,255,255,.75); }
+  .live i { width:9px; height:9px; border-radius:50%; background:#8d99a8; border:2px solid rgba(255,255,255,.85); }
+  .live.on i { background:#17d27e; box-shadow:0 0 0 3px rgba(23,210,126,.22); }
+  .x { width:32px; height:32px; border-radius:50%; border:0; background:rgba(255,255,255,.14); color:#fff; cursor:pointer; font-size:13px; line-height:1; margin-left:2px; flex:none; -webkit-tap-highlight-color:transparent; } /* 32px: a real touch target on phones */
+  .x:hover { background:rgba(255,255,255,.28); }
+  /* Mini mode: the card shrinks to a passport-size photo of Neha (the host panel goes to ~150x190 on
+     hhbot:size). The call keeps running hands-free; only her face, a status dot and a restore icon show.
+     Tap anywhere on the photo to bring the full card back. */
+  .x.sz { display:grid; place-items:center; padding:0; }
+  .x.sz svg { width:16px; height:16px; display:block; pointer-events:none; }
+  .x.sz .i-restore { display:none; }
+  body.mini .x.sz .i-mini { display:none; }
+  body.mini .x.sz .i-restore { display:block; }
+  body.mini header { padding:6px; background:none; justify-content:flex-end; }
+  body.mini .ava, body.mini .who, body.mini .live span, body.mini #closebtn { display:none; }
+  body.mini .live { position:absolute; left:8px; top:8px; margin:0; }
+  body.mini .x.sz { width:26px; height:26px; background:rgba(0,0,0,.35); }
+  body.mini .x.sz svg { width:13px; height:13px; }
+  body.mini #log, body.mini .note, body.mini .hint, body.mini .chips, body.mini .composer, body.mini .start { display:none !important; }
+  body.mini .stage { transform:scale(1.28); transform-origin:50% 14%; cursor:pointer; } /* zoom in on the face */
+  body.mini .stage:before { border-radius:0; }
+
+  .stage { position:absolute; inset:0; background:#000; overflow:hidden; } /* matches the portrait's black backdrop */
+  /* Living portrait. With a rendered idle loop (/avatar_idle.mp4) the video does the work; on the
+     still we layer three slow motions so the body is never frozen: sway (whole frame, hips),
+     breathe (chest scale) and a speech-driven nod (--nod/--tilt, set from the TTS amplitude). */
+  .stage .sway, .stage .breathe, .stage .nod { position:absolute; inset:0; }
+  .stage .sway { animation:sway 9s ease-in-out infinite; transform-origin:50% 100%; }
+  .stage .breathe { animation:breathe 4.6s ease-in-out infinite; transform-origin:50% 70%; }
+  .stage .nod { transform:translateY(calc(var(--nod,0) * 1px)) rotate(calc(var(--tilt,0) * 1deg)); transform-origin:50% 60%;
+                transition:transform .12s ease-out; }
+  .stage img, .stage video { width:100%; height:100%; object-fit:cover; object-position:center 15%; transform:scale(1.06); display:block; }
+  /* two stacked loops; the .front one is visible, the other fades out — that is the "reaction" crossfade */
+  .stage video { position:absolute; inset:0; opacity:0; transition:opacity .35s ease; display:none; }
+  .stage.video video { display:block; }
+  .stage.video video.front { opacity:1; }
+  .stage.video img { visibility:hidden; }
+  /* 2D puppet: one canvas = portrait + mouth-shape layer + eyelids, redrawn every frame */
+  .stage .gest { position:absolute; inset:0; transform-origin:50% 60%; }
+  .stage canvas.puppet { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 15%; transform:scale(1.06); display:none; }
+  .stage.puppet canvas.puppet { display:block; }
+  /* live talking-head stream (D-ID) replaces every local layer while connected */
+  .stage video.live { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center 15%; transform:scale(1.06); display:none; opacity:1; }
+  .stage.live video.live { display:block; }
+  .stage.live img, .stage.live canvas.puppet, .stage.live #idle, .stage.live #idle2 { display:none; }
+  /* Simli sends a 512x512 head crop; shown raw it zooms into a different-looking close-up. With the puppet
+     loaded the frame is drawn into the portrait instead (same framing as the still), so only the face moves. */
+  .stage.puppet.live.composite canvas.puppet { display:block; }
+  .stage.puppet.live.composite video.live { opacity:0; width:2px; height:2px; inset:auto 0 0 auto; transform:none; pointer-events:none; }
+  /* the live face renders its own expressions; body sway/breathe, nod and gesture layers stay on so the
+     shoulders and framing move like before */
+  .stage.live video.live { transform:scale(1.08); }
+  .stage.puppet img, .stage.puppet video { display:none; }
+  /* gesture animations for puppet mode (the clip sets use videos instead) */
+  .gest.g-nod    { animation:gNod 1.1s ease-in-out 2; }
+  .gest.g-slow   { animation:gNod 2.2s ease-in-out 1; }
+  .gest.g-tilt   { animation:gTilt 2.6s ease-in-out 1; }
+  .gest.g-lean   { animation:gLean 2.4s ease-in-out 1; }
+  .gest.g-lookup { animation:gLook 1.6s ease-in-out 1; }
+  .gest.g-greet  { animation:gGreet 2.2s ease-in-out 1; }
+  .gest.g-listen { animation:gListen 2.6s ease-in-out infinite; }
+  .gest.g-open   { animation:gOpen 2.4s ease-in-out 1; }      /* open_palm: a small welcoming lift */
+  .gest.g-pause  { animation:gPause 1.8s ease-in-out 1; }     /* pause: settle, glance down */
+  .gest.g-wobble { animation:gWobble 1.3s ease-in-out 1; }    /* Indian head wobble: "haan ji" */
+  .gest.g-micro  { animation:gMicro 1.4s ease-in-out 1; }     /* idle micro-motion */
+  .gest.g-mtilt  { animation:gMicroTilt 1.8s ease-in-out 1; }
+  @keyframes gNod    { 0%,100%{transform:none} 50%{transform:translateY(1.3%) rotate(0.5deg)} }
+  @keyframes gTilt   { 0%,100%{transform:none} 30%{transform:rotate(-2.2deg)} 70%{transform:rotate(1.3deg)} }
+  @keyframes gLean   { 0%,100%{transform:none} 45%{transform:scale(1.06) translateY(0.8%)} }
+  @keyframes gLook   { 0%,100%{transform:none} 40%{transform:translateY(-1.8%) rotate(1.4deg)} }
+  @keyframes gGreet  { 0%,100%{transform:none} 25%{transform:rotate(-2.4deg) scale(1.03)} 60%{transform:rotate(1.4deg) scale(1.04)} }
+  @keyframes gListen { 0%,100%{transform:rotate(-0.7deg)} 50%{transform:translateY(0.6%) rotate(0.7deg)} }
+  @keyframes gOpen   { 0%,100%{transform:none} 40%{transform:scale(1.025) rotate(-1deg) translateY(-0.4%)} 70%{transform:scale(1.015) rotate(0.6deg)} }
+  @keyframes gPause  { 0%,100%{transform:none} 50%{transform:translateY(0.5%) rotate(-0.6deg) scale(0.995)} }
+  @keyframes gWobble { 0%,100%{transform:none} 25%{transform:rotate(-1.6deg) translateY(0.4%)} 50%{transform:rotate(1.2deg)} 75%{transform:rotate(-0.8deg) translateY(0.3%)} }
+  @keyframes gMicro  { 0%,100%{transform:none} 50%{transform:translateY(0.5%) rotate(0.4deg)} }
+  @keyframes gMicroTilt { 0%,100%{transform:none} 50%{transform:rotate(-0.9deg) translateY(0.2%)} }
+  .stage.video:not(.live) .sway, .stage.video:not(.live) .breathe { animation:none; } /* rendered clips already breathe; the live face gets the body layers */
+  .stage.talking .breathe { animation-duration:3.2s; }
+  @keyframes sway { 0%,100%{transform:translate(-0.6%,0) rotate(-0.35deg)} 50%{transform:translate(0.6%,0.3%) rotate(0.35deg)} }
+  @keyframes breathe { 0%,100%{transform:scale(1) translateY(0)} 50%{transform:scale(1.014) translateY(-0.25%)} }
+  @media (prefers-reduced-motion: reduce) { .stage .sway, .stage .breathe, .stage .gest { animation:none !important; } .stage .nod { transform:none; } }
+  .stage:after { content:""; position:absolute; left:0; right:0; bottom:0; height:46%; background:linear-gradient(180deg, rgba(6,12,20,0), rgba(6,12,20,.82)); pointer-events:none; }
+  .chips { position:absolute; left:10px; top:46px; z-index:2; display:flex; gap:6px; }
+  .chips #emo { display:none; } /* emotion/gesture tag is for the avatar dev view (index.html), not customers */
+  .chips span {
+    font-size:10px; color:#eaf1fb; background:rgba(6,12,20,.5);
+    border:1px solid rgba(255,255,255,.14); border-radius:6px; padding:2px 7px; backdrop-filter:blur(6px);
+  }
+  .chips .wave { display:flex; gap:2px; align-items:flex-end; height:12px; padding:2px 6px; }
+  .chips .wave i { width:2px; background:#7fd6ae; border-radius:2px; height:3px; }
+
+  /* captions: last few turns, floated over the lower part of the portrait */
+  #log { position:absolute; left:10px; right:10px; bottom:calc(92px + env(safe-area-inset-bottom, 0px)); z-index:2; max-height:24%; overflow:hidden;
+         display:flex; flex-direction:column; justify-content:flex-end; gap:4px; pointer-events:none; }
+  .msg { max-width:92%; padding:0; font-size:12.5px; line-height:1.4; white-space:pre-wrap; text-shadow:0 1px 4px rgba(0,0,0,.75); }
+  .msg.bot { align-self:flex-start; color:#fff; }
+  .msg.user { align-self:flex-end; color:#cfe0ff; font-size:11.5px; }
+  .msg.user:before { content:"You: "; opacity:.7; }
+  .msg.bc { align-self:flex-start; color:rgba(255,255,255,.6); font-style:italic; font-size:10.5px; }
+  .typing { align-self:flex-start; display:flex; gap:4px; padding:4px 0; }
+  .typing i { width:5px; height:5px; border-radius:50%; background:#dfe7f2; animation:blink 1.1s infinite; }
+  .typing i:nth-child(2){ animation-delay:.16s } .typing i:nth-child(3){ animation-delay:.32s }
+  @keyframes blink { 0%,80%,100%{opacity:.28} 40%{opacity:1} }
+
+  /* controls: mic in the middle, keyboard + end on the sides; the input slides in when toggled */
+  /* padding-bottom grows by the phone's home-bar inset so the buttons are never under it */
+  .composer { position:absolute; left:0; right:0; bottom:0; z-index:3; padding:8px 10px calc(12px + env(safe-area-inset-bottom, 0px)); display:flex; gap:clamp(8px,2.5vw,12px); align-items:center; justify-content:center; }
+  .composer input {
+    display:none; flex:1; min-width:0; font:inherit; font-size:12.5px; color:#fff; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.22); border-radius:999px; padding:8px 12px; outline:none; backdrop-filter:blur(8px);
+  }
+  .composer input::placeholder { color:rgba(255,255,255,.6); }
+  .composer input:focus { border-color:rgba(255,255,255,.6); }
+  .composer.text input { display:block; }
+  .composer.text #mic { display:none; }
+  /* round glass buttons; size follows the card width (clamp) so phones and the 320px card both fit */
+  .icon {
+    --s:clamp(38px,12vw,44px); flex:none; width:var(--s); height:var(--s); border-radius:50%; padding:0; position:relative;
+    border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.14); color:#fff; cursor:pointer;
+    display:grid; place-items:center; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 4px 14px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.18);
+    transition:transform .15s ease, background .2s ease, box-shadow .2s ease, color .2s ease;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  }
+  .icon svg { width:46%; height:46%; display:block; pointer-events:none; }
+  .icon:hover { background:rgba(255,255,255,.26); transform:translateY(-1px); }
+  .icon:active { transform:scale(.92); }
+  .icon:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  .composer.text #kbd { background:var(--accent); border-color:var(--accent); }
+  #mic { --s:clamp(50px,16vw,58px); background:#fff; color:var(--accent); border-color:#fff; box-shadow:0 8px 24px rgba(0,0,0,.35), 0 0 0 4px rgba(255,255,255,.12); }
+  #mic svg { width:44%; height:44%; }
+  #mic:hover { background:#fff; box-shadow:0 10px 28px rgba(0,0,0,.4), 0 0 0 6px rgba(255,255,255,.18); }
+  /* hands-free mic: green pulse while listening, soft while Neha speaks (held to avoid echo), slashed when muted by the user */
+  #mic.rec, .icon.rec { background:#17d27e; color:#fff; border-color:#17d27e; box-shadow:0 0 0 0 rgba(23,210,126,.55); animation:micPulse 1.6s ease-out infinite; }
+  .icon.rec:after { content:""; position:absolute; inset:-6px; border-radius:50%; border:2px solid rgba(23,210,126,.55); animation:micRing 1.6s ease-out infinite; }
+  #mic.hold, .icon.hold { background:rgba(255,255,255,.22); color:#fff; border-color:rgba(255,255,255,.3); box-shadow:0 4px 14px rgba(0,0,0,.28); }
+  #mic.muted, .icon.muted { background:rgba(255,255,255,.12); color:rgba(255,255,255,.6); border-color:rgba(255,255,255,.2); box-shadow:none; animation:none; }
+  .icon.muted:before { content:""; position:absolute; left:50%; top:50%; width:58%; height:2px; background:currentColor; border-radius:2px; transform:translate(-50%,-50%) rotate(-45deg); }
+  @keyframes micPulse { 0%{box-shadow:0 0 0 0 rgba(23,210,126,.55)} 70%{box-shadow:0 0 0 14px rgba(23,210,126,0)} 100%{box-shadow:0 0 0 0 rgba(23,210,126,0)} }
+  @keyframes micRing { 0%{transform:scale(1);opacity:.9} 100%{transform:scale(1.9);opacity:0} }
+  /* card edge glow follows the state: green listening, blue speaking */
+  .stage:before { content:""; position:absolute; inset:0; z-index:5; pointer-events:none; border-radius:inherit; box-shadow:inset 0 0 0 0 rgba(23,210,126,0); transition:box-shadow .35s ease; }
+  body.listening .stage:before { box-shadow:inset 0 0 0 3px rgba(23,210,126,.85), inset 0 0 40px rgba(23,210,126,.25); }
+  body.speaking .stage:before { box-shadow:inset 0 0 0 3px rgba(79,156,255,.8), inset 0 0 40px rgba(79,156,255,.2); }
+  .hint { position:absolute; left:0; right:0; bottom:calc(68px + env(safe-area-inset-bottom, 0px)); z-index:3; text-align:center; font-size:10.5px; color:rgba(255,255,255,.78); pointer-events:none;
+          opacity:0; transition:opacity .3s; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  body.listening .hint.l, body.speaking .hint.s { opacity:1; }
+  body.listening .note, body.speaking .note { opacity:0; }
+  /* captions: glass bubbles so they read over any face/background */
+  .msg.bot { background:rgba(6,12,20,.5); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); padding:6px 10px; border-radius:12px 12px 12px 4px; border:1px solid rgba(255,255,255,.08); }
+  .msg.user { background:rgba(79,156,255,.28); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); padding:5px 9px; border-radius:12px 12px 4px 12px; color:#eaf2ff; }
+  .msg.user:before { content:""; }
+  /* phones: touch targets stay a little bigger than on desktop */
+  @media (max-width:520px), (max-height:620px) {
+    #log { bottom:calc(88px + env(safe-area-inset-bottom, 0px)); max-height:23%; }
+    .composer { padding:8px 10px calc(10px + env(safe-area-inset-bottom, 0px)); gap:10px; }
+    .icon { --s:clamp(40px,12vw,46px); } #mic { --s:clamp(52px,16vw,60px); }
+    .note { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:8.5px; } .hint { bottom:calc(66px + env(safe-area-inset-bottom, 0px)); }
+    header { padding:8px 10px; } .who b { font-size:13px; }
+  }
+  /* wider cards (tablet 340 px, large screens 360 px): text scales a little with the card width */
+  .msg { font-size:clamp(12.5px, 3.7vw, 14px); }
+  .msg.user { font-size:clamp(11.5px, 3.4vw, 13px); }
+  .who b { font-size:clamp(12.5px, 3.8vw, 14px); }
+  /* short viewports (landscape phones, small embedded frames): tighter header, smaller controls, fewer caption lines */
+  @media (max-height:420px) {
+    header { padding:6px 8px 10px; } .ava { width:22px; height:22px; } .who span { display:none; }
+    #log { bottom:calc(66px + env(safe-area-inset-bottom, 0px)); max-height:30%; }
+    .composer { padding:4px 8px calc(6px + env(safe-area-inset-bottom, 0px)); gap:8px; }
+    .icon { --s:34px; } #mic { --s:44px; }
+    .note { display:none; } .hint { bottom:calc(52px + env(safe-area-inset-bottom, 0px)); font-size:10px; }
+    .start { padding:8px 12px 14px; gap:8px; } .start p { font-size:12px; }
+  }
+  /* very narrow frames (an embed narrower than 300 px): never let the three controls overflow */
+  @media (max-width:300px) {
+    .composer { gap:6px; } .icon { --s:36px; } #mic { --s:46px; } .who span { max-width:120px; }
+  }
+  .icon.send { background:var(--accent-2); border-color:var(--accent-2); }
+  .icon.send:hover { filter:brightness(1.12); }
+  .icon.end { background:#e5484d; border-color:#e5484d; box-shadow:0 4px 14px rgba(229,72,77,.45), inset 0 1px 0 rgba(255,255,255,.18); }
+  .icon.end:hover { background:#f05a5f; }
+  .icon:disabled { opacity:.45; cursor:default; }
+
+  .start {
+    position:absolute; inset:0; z-index:4; display:grid; place-items:center; gap:12px; align-content:end;
+    background:linear-gradient(180deg, rgba(6,12,20,0) 35%, rgba(6,12,20,.86)); color:#fff; text-align:center; padding:14px 16px 26px;
+  }
+  .start p { margin:0; font-size:12.5px; opacity:.92; max-width:260px; text-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .start button {
+    font:inherit; font-weight:650; font-size:13px; cursor:pointer;
+    background:#fff; color:var(--accent); border:0; border-radius:999px; padding:10px 20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .start.hide { display:none; }
+  .note { position:absolute; left:0; right:0; bottom:calc(66px + env(safe-area-inset-bottom, 0px)); z-index:2; font-size:8.5px; line-height:1.25; color:rgba(255,255,255,.5); text-align:center; padding:0 14px; pointer-events:none; }
+  .note a { color:#9fc1ff; text-decoration:none; }
+  /* before "Start conversation": only the portrait, the header and the pitch */
+  body.pre .composer, body.pre .note, body.pre .chips, body.pre #log { display:none; }
+  /* voice mode shows keyboard · mic · end; send appears only with the text box */
+  .composer:not(.text) .send { display:none; }
+  .who span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px; }
+</style>
+</head>
+<body class="pre">
+<div class="stage" id="stage">
+  <div class="sway"><div class="breathe"><div class="nod" id="nod"><div class="gest" id="gest">
+    <video id="idle" muted loop playsinline preload="auto" aria-hidden="true"></video>
+    <video id="idle2" muted loop playsinline preload="auto" aria-hidden="true"></video>
+    <canvas id="puppet" class="puppet" aria-hidden="true"></canvas>
+    <video id="live" class="live" autoplay playsinline aria-hidden="true"></video>
+    <audio id="liveaudio" autoplay aria-hidden="true"></audio>
+    <img src="/avatar.jpg" alt="sales consultant" onerror="this.style.visibility='hidden'" />
+  </div></div></div></div>
+</div>
+
+<header>
+  <img class="ava" src="/avatar.jpg" alt="" onerror="this.style.display='none'" />
+  <div class="who"><b id="agent">Sales consultant</b><span id="brand">starting…</span></div>
+  <div class="live" id="live"><span id="status">connecting</span><i></i></div>
+  <button class="x sz" id="sizebtn" title="Chhota karein (photo)" aria-label="minimize">
+    <svg class="i-mini" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+    <svg class="i-restore" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/></svg>
+  </button>
+  <button class="x" id="closebtn" title="Close" aria-label="close">✕</button>
+</header>
+
+<div class="chips">
+  <span id="emo">neutral</span>
+  <div class="wave" id="wave"></div>
+</div>
+
+<div class="start" id="start">
+  <p id="pitch">Talk to a real sales consultant on video. Ask about price, offers or a test drive.</p>
+  <button id="go">Start conversation</button>
+</div>
+
+<div id="log"></div>
+<div class="note">AI consultant. Yeh baat-cheet record hoti hai — say "human" any time for a call back.</div>
+<div class="hint l">🎙 Neha sun rahi hai — boliye</div>
+<div class="hint s">Beech mein bolna ho to Neha par tap karein</div>
+<div class="composer" id="composer">
+  <button class="icon" id="kbd" title="Type instead" aria-label="Type instead">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 9.5h.01M10 9.5h.01M13.5 9.5h.01M17 9.5h.01M6.5 12.5h.01M10 12.5h.01M13.5 12.5h.01M17 12.5h.01M8 15.5h8"/></svg>
+  </button>
+  <button class="icon" id="mic" title="Speak" aria-label="Speak">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6"/></svg>
+  </button>
+  <input id="txt" placeholder="Type your question…" autocomplete="off" />
+  <button class="icon send" id="send" title="Send" aria-label="Send">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/></svg>
+  </button>
+  <button class="icon end" id="endbtn" title="End" aria-label="End conversation">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 9c-2.9 0-5.6.6-8 1.8-.6.3-1 .9-1 1.6v2.3c0 .8.7 1.4 1.5 1.3l3.2-.5c.6-.1 1-.6 1.1-1.2l.3-1.7c1-.3 1.9-.4 2.9-.4s2 .1 2.9.4l.3 1.7c.1.6.5 1.1 1.1 1.2l3.2.5c.8.1 1.5-.5 1.5-1.3v-2.3c0-.7-.4-1.3-1-1.6C17.6 9.6 14.9 9 12 9z"/></svg>
+  </button>
+</div>
+
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const $ = (id) => document.getElementById(id);
+  const accent = q.get("accent");
+  if (accent && /^#?[0-9a-f]{6}$/i.test(accent)) {
+    document.documentElement.style.setProperty("--accent", accent.startsWith("#") ? accent : "#" + accent);
+  }
+  let ctx = {};
+  try { ctx = JSON.parse(q.get("ctx") || "{}"); } catch (e) { ctx = {}; }
+  /* postMessage trust: the launcher (widget.js) passes its page origin as ?host=; a plain <iframe> embed falls
+     back to the referrer. Messages from any other origin are ignored and replies are pinned to the host.
+     Same-origin pages (the /clips trainer) are always trusted. */
+  const HOST_ORIGIN = (() => {
+    for (const s of [q.get("host"), document.referrer]) { try { if (s) return new URL(s).origin; } catch (e) {} }
+    return "";
+  })();
+  const fromTrustedOrigin = (e) => e.origin === location.origin || (!!HOST_ORIGIN && e.origin === HOST_ORIGIN);
+  const postToHost = (msg) => { if (window.parent === window) return; try { parent.postMessage(msg, HOST_ORIGIN || location.origin); } catch (e) {} };
+
+  // handsFree: the mic re-arms itself after every answer and after silence (AIVA-style open mic);
+  // muted: the user switched it off with the mic button; audio: the clip currently playing (for interrupts);
+  // closed: the host hid the card (mic, speech and idle motion stay off until it is shown again);
+  // rearm: the mic was open when the tab went to the background and should re-open when it is visible again
+  const state = { sid: null, active: false, busy: false, listening: false, rec: null, started: 0, handsFree: true, muted: false, audio: null, interrupt: false, closed: false, rearm: false };
+  const log = $("log");
+
+  function add(text, cls = "bot") {
+    const d = document.createElement("div");
+    d.className = "msg " + cls;
+    d.textContent = text;
+    log.appendChild(d);
+    // captions are a live subtitle, not a chat history: keep the last exchange only (the full
+    // conversation is recorded server-side), so bubbles never climb up over her face
+    const msgs = [...log.querySelectorAll(".msg")];
+    for (const old of msgs.slice(0, Math.max(0, msgs.length - 3))) old.remove();
+    log.scrollTop = 1e9;
+    return d;
+  }
+  function typing(on) {
+    if (on) react("thinking");
+    let t = document.getElementById("typing");
+    if (on && !t) {
+      t = document.createElement("div");
+      t.id = "typing"; t.className = "typing";
+      t.innerHTML = "<i></i><i></i><i></i>";
+      log.appendChild(t); log.scrollTop = 1e9;
+    }
+    if (!on && t) t.remove();
+  }
+  function setStatus(s, live) { $("status").textContent = s; $("live").classList.toggle("on", !!live); }
+
+  /* Body motion while speaking: read the TTS loudness and turn it into a small nod + tilt on the
+     portrait (a person's head moves with the stress of their sentences). Pure DOM, no video needed.
+     One shared <audio> element carries every server clip (backchannels and sentences): its
+     MediaElementSource + analyser are built once, and each clip runs one rAF loop that stops on
+     ended / error / emptied / interrupt-pause, or when the next clip supersedes it. */
+  let actx = null;
+  const SPK = { el: null, an: null, buf: null, run: 0, pending: null };
+  function ensureActx() {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume().catch(() => {});
+    return actx;
+  }
+  // iOS/Safari only unlock audio inside a tap: create/resume the contexts on the first pointer down anywhere
+  window.addEventListener("pointerdown", () => {
+    try { ensureActx(); } catch (e) {}
+    try { if (MIC.actx && MIC.actx.state === "suspended") MIC.actx.resume(); } catch (e) {}
+  }, { capture: true, passive: true });
+  function speakerEl() {
+    if (SPK.el) return SPK.el;
+    const a = new Audio(); a.preload = "auto"; SPK.el = a;
+    const settle = () => { SPK.run++; const nod = $("nod"); nod.style.setProperty("--nod", 0); nod.style.setProperty("--tilt", 0); if (PUP.on) mouthRest(); };
+    a.addEventListener("ended", settle); a.addEventListener("error", settle);
+    a.addEventListener("pause", () => { if (state.interrupt) settle(); });
+    a.addEventListener("emptied", () => { if (!a.getAttribute("src")) settle(); });   // src removed (interrupt/close); a src swap belongs to the next clip
+    return a;
+  }
+  function speakerGraph() {
+    if (SPK.an) return SPK.an;
+    const a = speakerEl(), ac = ensureActx();
+    const src = ac.createMediaElementSource(a);
+    const an = ac.createAnalyser(); an.fftSize = 512; an.smoothingTimeConstant = 0.3;   // 0.3: lips follow the voice; head smoothing is the envelope below
+    src.connect(an); an.connect(ac.destination);
+    SPK.an = an; SPK.buf = new Uint8Array(an.frequencyBinCount);
+    return an;
+  }
+  function nodFrom(audio) {
+    try {
+      const an = speakerGraph(), buf = SPK.buf;
+      const run = ++SPK.run;                                   // a newer clip (or a settle) ends this loop
+      const nod = $("nod");
+      // Head motion from the voice: a slow envelope (not the raw per-frame level) nods on stressed syllables,
+      // and the tilt drifts to a new small target on each syllable onset instead of oscillating like a
+      // metronome. Time constants are in ms so 30/60/120 Hz screens look the same.
+      let env = 0, tilt = 0, tiltTo = 0, lastT = performance.now(), prevAmp = 0;
+      const sm = (cur, to, tau, dt) => cur + (to - cur) * (1 - Math.exp(-dt / tau));
+      (function tick(t) {
+        if (SPK.run !== run) return;
+        if (document.hidden) { requestAnimationFrame(tick); return; }
+        const dt = Math.min(50, Math.max(0, t - lastT)); lastT = t;
+        an.getByteFrequencyData(buf);
+        let s = 0; for (let i = 2; i < 40; i++) s += buf[i];      // voice band only
+        const amp = Math.min(1, s / (38 * 140));
+        if (PUP.on) {
+          // lips: loudness → openness; brightness (1–3 kHz vs 200–800 Hz) → wide (E/I) vs round (O/U)
+          let lo = 0, hi = 0; for (let i = 2; i < 10; i++) lo += buf[i]; for (let i = 12; i < 36; i++) hi += buf[i];
+          const bright = (hi / 24) / ((lo / 8) + 1);
+          setMouthFromAudio(Math.min(1, amp * 2.2), Math.max(-1, Math.min(1, (bright - 0.45) * 3)));
+        }
+        env = sm(env, amp, amp > env ? 70 : 240, dt);
+        if (amp > 0.3 && prevAmp <= 0.3 && Math.random() < 0.5) tiltTo = (Math.random() * 2 - 1) * 0.9; // syllable onset
+        prevAmp = amp;
+        tilt = sm(tilt, tiltTo * Math.min(1, env * 1.5), 260, dt);
+        nod.style.setProperty("--nod", (env * 3.2).toFixed(2));                      // px down on stressed syllables
+        nod.style.setProperty("--tilt", tilt.toFixed(2));                            // slight left/right
+        requestAnimationFrame(tick);
+      })(performance.now());
+    } catch (e) { /* analyser unavailable: the CSS sway/breathe still runs */ }
+  }
+  /* ---------------- body reactions ----------------
+     The avatar is a set of short muted loops (idle, greeting, listening nod, thinking look-up and
+     one loop per gesture the persona emits with each sentence). `react(state, gesture)` crossfades
+     between two stacked <video>s. Clip choice is data: /avatar_clips/manifest.json (gesture → clips)
+     and persona.avatar.gestures (emotion → gesture) — edit those to "train" the reactions.
+     Without a manifest the single /avatar_idle.mp4 loop is used; without that, CSS motion on the still. */
+  /* ---------------- 2D puppet (default for the Neha portrait) ----------------
+     tran_moment/path_b cut photo-accurate mouth shapes (A E I O U FV L X closed) from the same portrait,
+     aligned to the full 640x852 canvas. We draw base + current mouth + eyelids every frame:
+       lips  ← loudness/brightness of the TTS audio (WebAudio analyser) → closest mouth shape
+       eyes  ← blink every 1.6–4.2 s (eyelid ellipses in sampled skin colour over the eye landmarks)
+       head  ← --nod/--tilt from speech + gesture keyframes (.gest.g-*)
+       body  ← sway/breathe layers
+     No model, no GPU, no real person. A talking-head renderer can replace it later (clip sets). */
+  const PUP = { on: false, cvs: $("puppet"), ctx: null, base: null, mouths: {}, cfg: null, pts: null, mouth: "X.png",
+                blinkT: 0, open: 0, width: 0, skin: ["#c99a7a", "#c99a7a"], fake: 0 };
+  const GESTURE_CLASS = { small_nod: "g-nod", nod: "g-nod", slow_nod: "g-slow", tilt_head: "g-tilt", open_palm: "g-open",
+                          both_hands: "g-lean", lean_in: "g-lean", look_up: "g-lookup", head_wobble: "g-wobble", idle: "", pause: "g-pause" };
+  const STATE_CLASS = { greeting: "g-greet", listening: "g-listen", thinking: "g-lookup", backchannel: "g-wobble", idle: "", talking: "" };
+  const ONE_SHOT_TO = { greeting: "idle", backchannel: "listening" };   // one-shot states fall back to a resting state
+  const pt = (k) => { const v = PUP.pts?.[k]; return !v ? null : Array.isArray(v) ? { x: v[0], y: v[1] } : v; };
+  async function puppetInit() {
+    const get = (f) => fetch("/avatar_puppet/" + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    const [cfg, face, rx] = await Promise.all([get("mouths.json"), get("face.json"), get("reactions.json")]);
+    if (!cfg?.shapes) return false;
+    const load = (f) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = "/avatar_puppet/" + f; });
+    try {
+      PUP.base = await load("base.png");
+      await Promise.all([...new Set(Object.values(cfg.shapes))].map(async (f) => { PUP.mouths[f] = await load(f); }));
+      // reaction layers (generate_reactions.py): eyes (blink frames, gaze), brows, and the smiling rest mouth.
+      // Optional: without them the puppet falls back to drawn eyelids and the plain rest mouth.
+      PUP.layers = {};
+      if (rx?.layers) {
+        await Promise.all(Object.entries(rx.layers).filter(([, l]) => l.kind !== "pose").map(async ([name, l]) => {
+          try { PUP.layers[name] = await load(l.file.replace(/^.*\//, "")); } catch (e) { /* layer missing: skipped */ }
+        }));
+        if (PUP.layers.smile) PUP.mouths["smile.png"] = PUP.layers.smile;
+      }
+    } catch (e) { return false; }
+    PUP.cfg = cfg; PUP.pts = face?.points || null;
+    PUP.cvs.width = cfg.canvas?.width || PUP.base.naturalWidth; PUP.cvs.height = cfg.canvas?.height || PUP.base.naturalHeight;
+    PUP.ctx = PUP.cvs.getContext("2d");
+    // eyelid colour: skin just under each eye
+    PUP.ctx.drawImage(PUP.base, 0, 0);
+    PUP.skin = ["l", "r"].map((s) => {
+      const b = pt(`eye_${s}_bottom`), o = pt(`eye_${s}_outer`), i = pt(`eye_${s}_inner`);
+      if (!b || !o || !i) return "#c99a7a";
+      const d = PUP.ctx.getImageData(Math.round((o.x + i.x) / 2), Math.round(b.y + Math.abs(o.x - i.x) * 0.35), 1, 1).data;
+      return `rgb(${d[0]},${d[1]},${d[2]})`;
+    });
+    PUP.on = true;
+    $("stage").classList.add("puppet");
+    scheduleBlink(performance.now() + 1200);
+    requestAnimationFrame(puppetDraw);
+    return true;
+  }
+  function scheduleBlink(at) { PUP.nextBlink = at; }
+  /* Simli frame -> portrait: measured on the 512x512 legacy face made from this portrait (eyes at (200,148) and
+     (298,148) in the frame; (249.5,223) and (359,222) in face.json), so scale 1.118, offset (26,57). The mask is
+     an ellipse in frame space around head and neck, soft-edged, so the collar fades into the still portrait. */
+  const LIVE_FIT = { ref: 512, scale: 1.118, dx: 26, dy: 57, cx: 249, cy: 170, rx: 215, ry: 300, inner: 0.72 };
+  const OFF = { cvs: null, ctx: null };
+  function drawLiveFace(c, v) {
+    const w = v.videoWidth, h = v.videoHeight, k = w / LIVE_FIT.ref;
+    if (!OFF.cvs) { OFF.cvs = document.createElement("canvas"); OFF.ctx = OFF.cvs.getContext("2d"); }
+    if (OFF.cvs.width !== w || OFF.cvs.height !== h) { OFF.cvs.width = w; OFF.cvs.height = h; }
+    const o = OFF.ctx;
+    o.globalCompositeOperation = "source-over"; o.clearRect(0, 0, w, h); o.drawImage(v, 0, 0, w, h);
+    o.globalCompositeOperation = "destination-in";
+    o.save(); o.translate(LIVE_FIT.cx * k, LIVE_FIT.cy * k); o.scale(LIVE_FIT.rx * k, LIVE_FIT.ry * k);
+    const g = o.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(LIVE_FIT.inner, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    o.fillStyle = g; o.fillRect(-2, -2, 4, 4); o.restore();
+    o.globalCompositeOperation = "source-over";
+    c.drawImage(OFF.cvs, LIVE_FIT.dx, LIVE_FIT.dy, w * LIVE_FIT.scale / k, h * LIVE_FIT.scale / k);
+  }
+  /* The 640x852 canvas is only repainted when something visible changed (mouth shape, blink step, live
+     frame); on an idle face that is a blink every few seconds instead of 60 full redraws a second. */
+  const BLINK_STEPS = 12;
+  function puppetDraw(now) {
+    if (!PUP.on) return;
+    if (document.hidden) { requestAnimationFrame(puppetDraw); return; }   // nothing to see; rAF is throttled anyway
+    const c = PUP.ctx;
+    const lv = $("live"), stage = $("stage");
+    if (LIVE.on && LIVE.id === "simli" && lv.videoWidth > 0 && stage.classList.contains("live")) {
+      stage.classList.add("composite");           // live face inside the portrait; Simli does lips and blinks
+      if (lv.currentTime !== PUP.liveT) { PUP.liveT = lv.currentTime; PUP.drawn = ""; c.drawImage(PUP.base, 0, 0); drawLiveFace(c, lv); }
+      requestAnimationFrame(puppetDraw);
+      return;
+    }
+    stage.classList.remove("composite");
+    if (now >= PUP.nextBlink) { PUP.blinkT = now; PUP.nextBlink = now + 1600 + Math.random() * 2600; if (Math.random() < 0.22) PUP.nextBlink = now + 260 + Math.random() * 160; }
+    const dt = now - PUP.blinkT;
+    const lid = dt >= 0 && dt < 150 && PUP.pts ? Math.round(Math.sin(Math.PI * dt / 150) * BLINK_STEPS) : 0;
+    // eyes: a blink uses the photo's own lids (half -> closed -> half); otherwise the current gaze layer
+    const L = PUP.layers || {};
+    let eyes = null;
+    if (lid && L.eyes_closed) eyes = lid >= BLINK_STEPS * 0.7 ? "eyes_closed" : "eyes_half";
+    else if (!lid && PUP.gaze && L[PUP.gaze]) eyes = PUP.gaze;
+    const brows = PUP.brows && L[PUP.brows] ? PUP.brows : null;
+    const mouthFile = PUP.mouth === "X.png" && PUP.restShape && PUP.mouths[PUP.restShape] ? PUP.restShape : PUP.mouth;
+    // Brows and the resting smile fade in/out over ~180 ms (a muscle moves, it does not switch); eyes and
+    // speech shapes switch at once, which is how blinks, glances and lips actually behave.
+    const dtF = Math.min(50, now - (PUP.lastDraw || now)); PUP.lastDraw = now;
+    const fade = (PUP.fade ||= { brows: { name: null, a: 0 }, smile: { a: 0 } });
+    if (brows && fade.brows.name !== brows) { fade.brows.name = brows; fade.brows.a = brows ? fade.brows.a : 0; }
+    const step = dtF / 180;
+    fade.brows.a = Math.max(0, Math.min(1, fade.brows.a + (brows ? step : -step)));
+    if (!brows && fade.brows.a === 0) fade.brows.name = null;
+    const smileOn = mouthFile === "smile.png";
+    fade.smile.a = Math.max(0, Math.min(1, fade.smile.a + (smileOn ? step : -step)));
+    const bA = Math.round(fade.brows.a * 20), sA = Math.round(fade.smile.a * 20);
+    const key = (smileOn || fade.smile.a > 0 ? "X.png" : mouthFile) + "|" + (eyes || lid) + "|" + fade.brows.name + bA + "|" + sA + "|" + (smileOn ? "" : mouthFile);
+    if (key !== PUP.drawn) {
+      PUP.drawn = key;
+      c.drawImage(PUP.base, 0, 0);
+      if (fade.brows.name && fade.brows.a > 0) { c.globalAlpha = fade.brows.a; c.drawImage(L[fade.brows.name], 0, 0); c.globalAlpha = 1; }
+      if (eyes) c.drawImage(L[eyes], 0, 0);
+      if (smileOn || (fade.smile.a > 0 && mouthFile === "X.png")) {
+        const rest = PUP.mouths["X.png"]; if (rest) c.drawImage(rest, 0, 0);
+        if (fade.smile.a > 0) { c.globalAlpha = fade.smile.a; c.drawImage(PUP.mouths["smile.png"], 0, 0); c.globalAlpha = 1; }
+      } else {
+        const m = PUP.mouths[mouthFile] || PUP.mouths["X.png"];
+        if (m) c.drawImage(m, 0, 0);
+      }
+      if (lid && !eyes) drawLids(c, lid / BLINK_STEPS);   // no eye layers: drawn eyelids
+    }
+    requestAnimationFrame(puppetDraw);
+  }
+  /* Reaction moments on top of speech: which eyes / brows / resting mouth the puppet shows.
+       listening  eyes to the customer, now and then a short glance aside (people do not stare)
+       thinking   gaze up, brows a touch raised
+       talking    brows follow the sentence: raised for an enthusiastic line or a question, drawn in for a concern
+       warm mood  the resting mouth is the smile frame instead of neutral lips */
+  function setReaction(state, emotion, text) {
+    const L = PUP.layers || {};
+    clearTimeout(PUP.glanceT);
+    if (state === "thinking") { PUP.gaze = "gaze_up"; PUP.brows = L.brows_up ? "brows_up" : null; }
+    else if (state === "listening" || state === "idle") {
+      PUP.gaze = null; PUP.brows = null;
+      const glance = () => {                       // a 500 ms look aside every 4-8 s while listening
+        if (!PUP.on || (AV.state !== "listening" && AV.state !== "idle")) return;
+        PUP.gaze = Math.random() < 0.5 ? "gaze_left" : "gaze_right";
+        setTimeout(() => { if (PUP.gaze !== "gaze_up") PUP.gaze = null; }, 450 + Math.random() * 250);
+        PUP.glanceT = setTimeout(glance, 4000 + Math.random() * 4000);
+      };
+      PUP.glanceT = setTimeout(glance, 2500 + Math.random() * 3000);
+    } else if (state === "talking") {
+      PUP.gaze = null;
+      const q = /\?\s*$/.test(text || "");
+      PUP.brows = emotion === "concerned" ? "brows_in" : (emotion === "enthusiastic" || q) ? "brows_up" : null;
+    }
+    if (emotion) PUP.mood = emotion;
+    PUP.restShape = (PUP.mood === "warm" || PUP.mood === "enthusiastic") && PUP.mouths["smile.png"] ? "smile.png" : "X.png";
+  }
+  function drawLids(c, amt) {
+    ["l", "r"].forEach((s, k) => {
+      const o = pt(`eye_${s}_outer`), i = pt(`eye_${s}_inner`), t = pt(`eye_${s}_top`), b = pt(`eye_${s}_bottom`);
+      if (!o || !i || !t || !b) return;
+      const cx = (o.x + i.x) / 2, w = Math.abs(o.x - i.x) * 0.66, h = Math.max(2, (b.y - t.y)) * 0.75;
+      // lid descends from the top edge: ellipse centre moves down with amt so the eye "closes" rather than fades
+      const cy = t.y - h * 0.15 + (b.y - t.y) * 0.55 * amt;
+      c.save(); c.fillStyle = PUP.skin[k]; c.globalAlpha = Math.min(1, amt * 1.4);
+      c.beginPath(); c.ellipse(cx, cy, w, h * (0.35 + 0.75 * amt), 0, 0, Math.PI * 2); c.fill(); c.restore();
+    });
+  }
+  /* map a 0..1 openness + width (-1 round .. +1 wide) to the closest photo shape — same table as path_b */
+  function shapeFor(open, width) {
+    if (open < 0.06) return "closed.png";
+    if (open < 0.22) return width > 0.2 ? "FV.png" : "L.png";
+    if (open < 0.42) return width > 0.2 ? "I.png" : "E.png";
+    if (open < 0.62) return width < -0.3 ? "U.png" : "E.png";
+    return width < -0.3 ? "O.png" : "A.png";
+  }
+  const MOUTH_HOLD_MS = 70;   // hysteresis: a shape stays at least this long, so the lips do not flicker between frames
+  function setMouthFromAudio(open, width) {
+    PUP.open += (open - PUP.open) * (open > PUP.open ? 0.6 : 0.35);   // open fast, close a little slower
+    PUP.width += (width - PUP.width) * 0.3;
+    const want = PUP.open < 0.04 ? "X.png" : shapeFor(PUP.open, PUP.width);
+    const now = performance.now();
+    if (want !== PUP.mouth && now - (PUP.mouthAt || 0) >= MOUTH_HOLD_MS) { PUP.mouth = want; PUP.mouthAt = now; }
+  }
+  function mouthRest() { PUP.open = 0; PUP.mouth = "X.png"; PUP.mouthAt = 0; clearInterval(PUP.fake); PUP.fake = 0; }
+  /* browser-TTS fallback has no audio stream: plausible syllable rhythm instead */
+  function mouthFake(on) {
+    clearInterval(PUP.fake); PUP.fake = 0;
+    if (!on) return mouthRest();
+    const seq = ["A.png", "E.png", "X.png", "O.png", "I.png", "closed.png", "A.png", "U.png", "L.png", "E.png"];
+    let i = 0; PUP.fake = setInterval(() => { PUP.mouth = seq[i++ % seq.length]; }, 110);
+  }
+  function gesturePuppet(state, gesture, emotion, text) {
+    setReaction(state, emotion, text);
+    const g = $("gest");
+    const cls = state === "talking" ? (GESTURE_CLASS[gesture] ?? "g-nod") : (STATE_CLASS[state] ?? "");
+    const now = performance.now();
+    // Same class already playing: a looping state keeps looping, and a gesture repeated within 2.5 s is left
+    // to finish rather than restarted (a nod on every sentence restarting from zero looks like a tic).
+    if (cls && g.classList.contains(cls) && (AV.state === state) && (state !== "talking" || now - (AV.gestAt || 0) < 2500)) {
+      AV.state = state; AV.curName = "puppet:" + cls; return;
+    }
+    [...g.classList].filter((c) => c.startsWith("g-")).forEach((c) => g.classList.remove(c));
+    if (cls) { void g.offsetWidth; g.classList.add(cls); AV.gestAt = now; }
+    AV.state = state; AV.curName = "puppet:" + (cls || "idle");
+    const next = ONE_SHOT_TO[state];
+    if (next && cls) g.addEventListener("animationend", () => { if (AV.state === state) gesturePuppet(next); }, { once: true });
+  }
+  /* A person is never perfectly still between sentences: every 3.5-6.5 s of idle or listening, one tiny nod
+     or tilt, then back to the resting state. Runs over the live face too (same #gest layer). */
+  const MM = { t: 0 };
+  function microMotionStop() { clearTimeout(MM.t); MM.t = 0; }
+  function microMotionStart() {
+    microMotionStop();
+    MM.t = setTimeout(() => {
+      if (PUP.on && !document.hidden && !document.body.classList.contains("speaking") && (AV.state === "idle" || AV.state === "listening")) {
+        const g = $("gest"), prev = AV.state;
+        const cls = Math.random() < 0.65 ? "g-micro" : "g-mtilt";
+        [...g.classList].filter((c) => c.startsWith("g-")).forEach((c) => g.classList.remove(c));
+        void g.offsetWidth; g.classList.add(cls);
+        g.addEventListener("animationend", () => { if (AV.state === prev) gesturePuppet(prev); }, { once: true });
+      }
+      microMotionStart();
+    }, 3500 + Math.random() * 3000);
+  }
+  microMotionStart();   // stopped while the card is closed or the tab is hidden (see pauseCard / visibilitychange)
+
+  const AV = { manifest: null, cur: null, curName: "", last: {}, vids: [$("idle"), $("idle2")], front: 0, timer: 0, req: 0 };
+  window.__hhAV = AV; window.__hhPUP = PUP; // dev/test handles: inspect state/clip/mouth from the console
+  // trainer page (/clips) fires reactions into the card and listens for the resulting state
+  window.addEventListener("message", (e) => {
+    if (!fromTrustedOrigin(e) || e.data?.type !== "hhbot:react") return;
+    react(e.data.state || "idle", e.data.gesture || null, { once: !!e.data.once });
+    setTimeout(() => { try { e.source.postMessage({ type: "hhbot:react:state", state: AV.state, clip: AV.curName }, e.origin); } catch (_) {} }, 500);
+  });
+  function clipFor(state, gesture) {
+    const m = AV.manifest; if (!m) return null;
+    const list = (gesture && m.gestures?.[gesture]) || m.states?.[state] || m.states?.idle || [];
+    if (!list.length) return null;
+    const key = gesture || state;
+    const pool = list.length > 1 ? list.filter((f) => f !== AV.last[key]) : list;   // no immediate repeats
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    AV.last[key] = pick;
+    return pick;
+  }
+  /** state: idle | greeting | listening | thinking | talking ; gesture: persona gesture name (talking only) */
+  function react(state, gesture, { once = false, emotion = null, text = "" } = {}) {
+    if (PUP.on) return gesturePuppet(state, gesture, emotion, text);   // puppet mode: gestures are CSS + reaction layers, not clips
+    if (state === "backchannel") state = "listening";        // clip sets have no wobble clip: keep the listening loop
+    const file = clipFor(state, gesture);
+    if (!file) return;
+    clearTimeout(AV.timer);
+    AV.state = state;
+    const name = file;
+    if (name === AV.curName) { AV.req++; return; }         // already showing it; also cancel any pending load
+    const back = AV.vids[1 - AV.front];
+    const req = ++AV.req;                                  // a newer react() supersedes this load
+    back.loop = !once;
+    back.src = "/avatar_clips/" + file + CLIP_Q;
+    back.onerror = () => { back.removeAttribute("src"); };
+    back.oncanplay = () => {
+      back.oncanplay = null;
+      if (req !== AV.req) return;                          // stale: a later clip was requested meanwhile
+      back.play().catch(() => {});
+      back.classList.add("front"); AV.vids[AV.front].classList.remove("front");
+      AV.front = 1 - AV.front; AV.curName = name;
+      $("stage").classList.add("video");
+      const fade = AV.manifest?.crossfade_ms ?? 350;
+      setTimeout(() => { const old = AV.vids[1 - AV.front]; if (old !== back) old.pause(); }, fade + 50);
+    };
+    if (once) back.onended = () => { if (AV.state === state) react("idle"); };
+  }
+  // which reaction set: ?clips=neha (default, synthesized from the CGI portrait) | ?clips=sample (presenter footage, test only)
+  const CLIP_SET = (new URLSearchParams(location.search).get("clips") || "neha").replace(/[^a-z0-9_]/g, "");
+  const CLIP_Q = "?set=" + CLIP_SET;
+  /* ---------------- live talking-head stream (D-ID) ----------------
+     ?clips=did → the server opens a D-ID stream of the same portrait; we answer the WebRTC offer, relay ICE,
+     and play the incoming video in #live. Each sentence is sent as text (/avatar/say) and D-ID speaks it
+     with the Indian female Microsoft voice, lips and head rendered neurally. Falls back to the puppet. */
+  const LIVE = { on: false, id: null, session: null, pc: null, waiting: null, dc: null };
+  const postJ = (url, body) => fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then(async (r) => ({ ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) }));
+  /* Simli (audio-driven): the server mints a session token; the SDK opens WebRTC into #live/#liveaudio.
+     Our TTS clip is decoded, resampled to PCM16 16 kHz mono and streamed in; Simli plays the audio and
+     renders the lip-synced face, so nothing is played locally. */
+  async function liveInitSimli(data) {
+    try {
+      const mod = await import("https://esm.sh/simli-client@3.2.0");
+      const SimliClient = mod.SimliClient || mod.default?.SimliClient || mod.default;
+      const LogLevel = mod.LogLevel || {};
+      const client = new SimliClient(data.session_token, $("live"), $("liveaudio"), undefined, LogLevel.ERROR ?? undefined);
+      LIVE.simli = client; LIVE.id = "simli"; LIVE.session = data.session_token;
+      client.on("speaking", () => { LIVE.talking = true; if (LIVE.onSpeaking) { const f = LIVE.onSpeaking; LIVE.onSpeaking = null; f(); } });
+      client.on("silent", () => { LIVE.talking = false; if (LIVE.waiting) { const w = LIVE.waiting; LIVE.waiting = null; w(); } });
+      client.on("error", (d) => { console.warn("simli error:", d); liveTeardown(); });
+      client.on("stop", () => { liveTeardown(); });
+      await client.start();                                 // resolves when the first frame is on screen
+      LIVE.on = true;
+      $("stage").classList.add("live", "video");           // Simli renders the idle face continuously
+      return true;
+    } catch (e) { console.warn("simli init failed:", String(e?.message || e).slice(0, 160)); LIVE.simli = null; return false; }
+  }
+  async function liveSaySimli(text) {
+    const r = await fetch("/tts?text=" + encodeURIComponent(text));
+    if (!r.ok) return false;
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await actx.decodeAudioData(await r.arrayBuffer());
+    const frames = Math.ceil(buf.duration * 16000);
+    const off = new OfflineAudioContext(1, frames, 16000);
+    const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+    const mono = (await off.startRendering()).getChannelData(0);
+    const pcm = new Int16Array(mono.length);
+    for (let i = 0; i < mono.length; i++) { const s = Math.max(-1, Math.min(1, mono[i])); pcm[i] = s < 0 ? s * 0x8000 : s * 0x7fff; }
+    const bytes = new Uint8Array(pcm.buffer);
+    // body reaction while Simli speaks: loudness envelope (80 ms windows) → --nod / --tilt on the stage,
+    // the same cue the local analyser gives in puppet mode
+    const WIN = 1280, env = [];
+    for (let i = 0; i < mono.length; i += WIN) { let s = 0; const n = Math.min(WIN, mono.length - i); for (let j = 0; j < n; j++) s += mono[i + j] * mono[i + j]; env.push(Math.sqrt(s / n)); }
+    const peak = Math.max(0.05, ...env);
+    const nod = $("nod"); let raf = 0;
+    const driveNod = () => {
+      const t0 = performance.now(); let phase = 0;
+      const tick = () => {
+        const k = Math.floor((performance.now() - t0) / 80);
+        if (k >= env.length || !LIVE.on) { nod.style.setProperty("--nod", 0); nod.style.setProperty("--tilt", 0); return; }
+        const amp = Math.min(1, env[k] / peak); phase += 0.09;
+        nod.style.setProperty("--nod", (amp * 3.5).toFixed(2)); nod.style.setProperty("--tilt", (Math.sin(phase) * amp * 0.9).toFixed(2));
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    LIVE.onSpeaking = driveNod;                     // fired by the SDK "speaking" event; fallback below
+    const fallback = setTimeout(() => { if (LIVE.onSpeaking) { LIVE.onSpeaking = null; driveNod(); } }, 900);
+    return new Promise((res) => {
+      const timer = setTimeout(() => { if (LIVE.waiting) { LIVE.waiting = null; res(); } }, buf.duration * 1000 + 3000);
+      LIVE.waiting = () => { clearTimeout(timer); clearTimeout(fallback); cancelAnimationFrame(raf); nod.style.setProperty("--nod", 0); nod.style.setProperty("--tilt", 0); res(); };
+      try { for (let i = 0; i < bytes.length; i += 6000) LIVE.simli.sendAudioData(bytes.subarray(i, i + 6000)); }
+      catch (e) { clearTimeout(timer); LIVE.waiting = null; res(false); }
+    });
+  }
+  async function liveInit() {
+    const s = await postJ("/avatar/start", {});
+    if (!s.ok) { console.warn("avatar stream unavailable:", s.data?.error); return false; }
+    if (s.data.provider === "simli") return liveInitSimli(s.data);
+    LIVE.id = s.data.id; LIVE.session = s.data.session_id;
+    const pc = new RTCPeerConnection({ iceServers: s.data.ice_servers || [] });
+    LIVE.pc = pc;
+    pc.onicecandidate = (e) => { if (e.candidate) postJ("/avatar/ice", { id: LIVE.id, session_id: LIVE.session, candidate: e.candidate.toJSON() }); };
+    // D-ID streams a tiny 150px placeholder between talks; the rendered portrait only flows while a talk
+    // plays. So the <video> is shown between "stream/started" and "stream/done" and the puppet/still
+    // stays underneath the rest of the time (same approach as D-ID's own demo).
+    const showLive = (on) => { const v = $("live"); const real = v.videoWidth > 200; $("stage").classList.toggle("live", on && real); if (on && real) $("stage").classList.add("video"); };
+    pc.ontrack = (e) => { const v = $("live"); if (v.srcObject !== e.streams[0]) { v.srcObject = e.streams[0]; v.play().catch(() => {}); } LIVE.on = true; v.onresize = () => { if (LIVE.talking) showLive(true); }; };
+    pc.ondatachannel = (e) => {
+      LIVE.dc = e.channel;
+      e.channel.onmessage = (m) => {
+        const t = String(m.data || "");
+        if (/stream\/started/.test(t)) { LIVE.talking = true; showLive(true); }
+        if (/stream\/done|stream\/ended/.test(t)) { LIVE.talking = false; showLive(false); if (LIVE.waiting) { const w = LIVE.waiting; LIVE.waiting = null; w(); } }
+      };
+    };
+    pc.onconnectionstatechange = () => { if (["failed", "closed", "disconnected"].includes(pc.connectionState)) { LIVE.on = false; $("stage").classList.remove("live"); } };
+    await pc.setRemoteDescription(s.data.offer);
+    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
+    const a = await postJ("/avatar/sdp", { id: LIVE.id, session_id: LIVE.session, answer: { type: answer.type, sdp: answer.sdp } });
+    if (!a.ok) { console.warn("avatar sdp failed:", a.data?.error); pc.close(); return false; }
+    return true;
+  }
+  /** speak one sentence on the stream; resolves when D-ID reports the clip done (or after a time estimate) */
+  function liveSay(text) {
+    if (LIVE.simli) return liveSaySimli(text);
+    return new Promise(async (res) => {
+      const est = 900 + Math.min(12000, text.split(/\s+/).length * 420);
+      const timer = setTimeout(() => { if (LIVE.waiting) { LIVE.waiting = null; res(); } }, est + 2500);
+      LIVE.waiting = () => { clearTimeout(timer); res(); };
+      const r = await postJ("/avatar/say", { id: LIVE.id, session_id: LIVE.session, text });
+      if (!r.ok) { clearTimeout(timer); LIVE.waiting = null; console.warn("avatar say failed:", r.data?.error); await liveTeardown(); res(false); }
+    });
+  }
+  /** stream unusable (credits, network): drop it and bring the 2D puppet back so speech keeps lips + motion */
+  async function liveTeardown() {
+    if (!LIVE.id) return;
+    const { id, session } = LIVE;
+    LIVE.on = false; LIVE.id = null;
+    if (LIVE.simli) { const c = LIVE.simli; LIVE.simli = null; try { await c.stop(); } catch (e) {} }
+    try { LIVE.pc && LIVE.pc.close(); } catch (e) {}
+    $("stage").classList.remove("live", "video");
+    const v = $("live"); v.srcObject = null;
+    postJ("/avatar/stop", { id, session_id: session }).catch(() => {});
+    if (!PUP.on) await puppetInit();
+  }
+  // end the live session when the card goes away — free tiers allow one session, so a lingering one
+  // blocks the next visitor until the idle timeout
+  const endLive = () => { if (LIVE.simli) { try { LIVE.simli.stop(); } catch (e) {} LIVE.simli = null; LIVE.on = false; } if (LIVE.id && LIVE.id !== "simli") navigator.sendBeacon && navigator.sendBeacon("/avatar/stop", JSON.stringify({ id: LIVE.id, session_id: LIVE.session })); };
+  window.addEventListener("pagehide", endLive);
+  window.addEventListener("beforeunload", endLive);
+
+  (async () => {
+    // "did" = neural live stream of the portrait; "neha" = 2D puppet (lips, blinks, head, body); else clip sets.
+    // With no explicit ?clips=, the stream is used automatically whenever the server reports it ready.
+    const explicit = new URLSearchParams(location.search).has("clips");
+    const auto = !explicit && await fetch("/health").then((r) => r.json()).then((h) => !!h.avatar?.ready).catch(() => false);
+    // stream handshake and puppet load run together: the puppet is on screen within ~1 s, the stream
+    // (best effort) joins when its WebRTC connection is up
+    const wantLive = CLIP_SET === "did" || auto, wantPuppet = CLIP_SET === "neha" || wantLive;
+    const [live, pup] = await Promise.all([wantLive ? liveInit().catch(() => false) : false, wantPuppet ? puppetInit() : false]);
+    // free tiers allow one live session at a time: if the stream could not start, retry quietly
+    // while the puppet carries the conversation, and switch over when a slot frees up
+    if (wantLive && !live) { let tries = 0; const again = async () => { if (LIVE.on || !state.active && tries > 0) return; tries++; const ok = await liveInit().catch(() => false); if (!ok && tries < 2) setTimeout(again, 15000); }; setTimeout(again, 15000); }
+    if (pup) return;
+    try {
+      const r = await fetch("/avatar_clips/manifest.json" + CLIP_Q);
+      if (r.ok) { AV.manifest = await r.json(); react("idle"); return; }
+    } catch (e) {}
+    // no manifest: single idle loop, else the still keeps its CSS motion
+    const v = $("idle");
+    v.addEventListener("canplay", () => { $("stage").classList.add("video"); v.classList.add("front"); v.play().catch(() => {}); }, { once: true });
+    v.addEventListener("error", () => { $("stage").classList.remove("video"); v.removeAttribute("src"); }, { once: true });
+    v.src = "/avatar_idle.mp4";
+  })();
+  function wave(on) {
+    const w = $("wave"); w.innerHTML = ""; clearInterval(state.waveT);
+    $("stage").classList.toggle("talking", !!on);
+    if (!on) return;
+    for (let i = 0; i < 10; i++) { const b = document.createElement("i"); b.style.height = "3px"; w.appendChild(b); }
+    state.waveT = setInterval(() => {
+      [...w.children].forEach(b => b.style.height = (3 + Math.random() * 9).toFixed(0) + "px");
+    }, 95);
+  }
+
+  /* speech out: server neural TTS, browser voice as fallback.
+     The fallback has to sound like Riya, so prefer a female Indian voice: "Microsoft Heera" (en-IN),
+     "Microsoft Kalpana" (hi-IN) on Windows, "Google हिन्दी" in Chrome. */
+  /* ttsOk: null = untried, true = server voice works, false = the last play() failed. A failure (autoplay block,
+     network blip, 503) is not for ever: the browser voice fills in only during a 15 s cooldown, then the next
+     sentence tries the server voice again. */
+  let ttsOk = null, ttsDownUntil = 0;
+  const TTS_RETRY_MS = 15000;
+  const ttsAvailable = () => !(ttsOk === false && Date.now() < ttsDownUntil);
+  const ttsFailed = () => { ttsOk = false; ttsDownUntil = Date.now() + TTS_RETRY_MS; };
+  const FEMALE =/female|heera|kalpana|swara|neerja|veena|anjali|priya|riya|neha|kavya|aditi|shreya|google\s*(हिन्दी|hindi)/i;
+  const MALE = /\bmale\b|aarav|\bravi\b|prabhat|hemant|mohan|david|mark|george|daniel|alex|fred/i;
+  const pickVoice = (wantHi) => {
+    const vs = speechSynthesis.getVoices();
+    const lang = wantHi ? /hi-IN/i : /en-IN/i;
+    const score = v => (lang.test(v.lang)
+      ? 10 + (FEMALE.test(v.name) ? 5 : 0) - (MALE.test(v.name) ? 8 : 0) + (/google/i.test(v.name) ? -1 : 0)
+      : (FEMALE.test(v.name) ? 2 : 0) - (MALE.test(v.name) ? 4 : 0));
+    return vs.slice().sort((a, b) => score(b) - score(a))[0] || null;
+  };
+  speechSynthesis.onvoiceschanged = () => pickVoice(false); pickVoice(false);
+
+  function sayBrowser(c) {
+    return new Promise(res => {
+      const isHi = /[\u0900-\u097F]/.test(c.text);
+      const voice = pickVoice(isHi);
+      const u = new SpeechSynthesisUtterance(c.text);
+      if (voice) u.voice = voice;
+      u.lang = voice && voice.lang ? voice.lang : (isHi ? "hi-IN" : "en-IN");
+      react("talking", c.gesture, { emotion: c.emotion, text: c.text });
+      if (PUP.on) { mouthFake(true); const done = res; res = () => { mouthFake(false); done(); }; }
+      u.rate = 1.0; u.pitch = c.emotion === "enthusiastic" ? 1.08 : 1.0;
+      $("emo").textContent = c.emotion || "neutral";
+      u.onend = res; u.onerror = res;
+      speechSynthesis.speak(u);
+    });
+  }
+  /* Latency: every sentence's clip is requested the moment its SSE event arrives (the server is already
+     synthesizing it), so by the time the previous clip finishes the next one is usually downloaded.
+     Backchannels ("haan ji", "acha") are warm on the server and play immediately while the model thinks. */
+  /* /tts streams the MP3 while Edge is still synthesizing, and <audio src> plays a stream progressively, so
+     the first words are heard ~1 s after the sentence is known instead of after the whole clip (1.5-4.6 s). */
+  const TTS_PREFETCH = new Set();                    // texts the server has been told to start synthesizing
+  const TTS_PREFETCH_MAX = 200;                      // bounded: the oldest entries drop out of a long session
+  /* `emo` is the sentence's emotion tag: the server shifts rate/pitch per emotion, so the prefetch and the
+     playback must name the same one or the clip is synthesized twice. */
+  const ttsUrl = (text, emo) => "/tts?text=" + encodeURIComponent(text) + (emo ? "&emo=" + encodeURIComponent(emo) : "");
+  function prefetchClip(text, emo) {
+    if (!ttsAvailable() || LIVE.on || !text || TTS_PREFETCH.has(text)) return;
+    while (TTS_PREFETCH.size >= TTS_PREFETCH_MAX) TTS_PREFETCH.delete(TTS_PREFETCH.values().next().value);
+    TTS_PREFETCH.add(text);
+    fetch(ttsUrl(text, emo) + "&prefetch=1").catch(() => {});
+  }
+  /* Plays a streamed clip on the shared element; resolves true when it ended (or was cut by the user / by the
+     next clip), false when the element failed (server 503 / no audio / autoplay blocked). */
+  function playClip(text, emo) {
+    return new Promise((res) => {
+      const a = speakerEl(); state.audio = a;
+      if (SPK.pending) SPK.pending(true);           // a clip still in flight (a backchannel) yields to this one
+      let settled = false;
+      const onEnded = () => done(true), onError = () => done(false), onPause = () => { if (state.interrupt) done(true); };
+      const off = () => { a.removeEventListener("ended", onEnded); a.removeEventListener("error", onError); a.removeEventListener("pause", onPause); };
+      const done = (ok) => { if (settled) return; settled = true; if (SPK.pending === done) SPK.pending = null; off(); res(ok); };
+      SPK.pending = done;
+      a.src = ttsUrl(text, emo);                     // (a src swap queues "emptied" for the old clip; nothing here listens to it)
+      a.addEventListener("ended", onEnded); a.addEventListener("error", onError); a.addEventListener("pause", onPause);
+      nodFrom(a);
+      try { if (actx && actx.state === "suspended") actx.resume().catch(() => {}); } catch (e) {}
+      a.play().catch(() => done(false));
+    });
+  }
+  async function sayBackchannel(text) {
+    if (!ttsAvailable() || LIVE.on || !text || state.closed || SPK.pending) return;   // never over a sentence
+    if (state.interrupt || !state.busy) return;
+    try { await playClip(text); } catch (e) { /* a missed backchannel is not an error */ }
+  }
+  async function say(c) {
+    if (state.closed) return;                        // card hidden by the host: captions only, no sound
+    if (LIVE.on) {                                   // neural stream speaks and moves; captions still ours
+      $("emo").textContent = (c.emotion || "neutral") + (c.gesture ? " · " + c.gesture : "");
+      react("talking", c.gesture, { emotion: c.emotion, text: c.text });                   // body gesture layer runs over the live face too
+      const ok = await liveSay(c.text);
+      if (ok !== false) return;
+    }
+    if (ttsAvailable()) {
+      try {
+        react("talking", c.gesture, { emotion: c.emotion, text: c.text });                 // gesture starts as the sentence begins
+        TTS_PREFETCH.delete(c.text);
+        if (state.interrupt) return;                 // user cut in before the clip started
+        $("emo").textContent = (c.emotion || "neutral") + (c.gesture ? " · " + c.gesture : "");
+        const ok = await playClip(c.text, c.emotion); // streams from the server; interrupt() pauses it
+        if (ok || state.interrupt) { ttsOk = true; ttsDownUntil = 0; return; }
+        throw new Error("tts");
+      } catch (e) { ttsFailed(); }                   // browser voice for this sentence; the server voice is retried after the cooldown
+    }
+    return sayBrowser(c);
+  }
+  async function speak(chunks) {
+    if (!chunks || !chunks.length) return;
+    wave(true); stopMic();                                  // mic off while she talks: no self-echo
+    document.body.classList.add("speaking"); $("mic").classList.add("hold");
+    for (const c of chunks) { if (state.interrupt) break; await say(c); }
+    document.body.classList.remove("speaking"); $("mic").classList.remove("hold");
+    wave(false); $("emo").textContent = "neutral";
+    react("idle");
+    if (state.interrupt) { state.interrupt = false; state.cutAt = Date.now(); if (!state.busy) setTimeout(listen, 200); }   // cut in → hear the user
+  }
+
+  /* speech in */
+  /* ---------------- hands-free mic (server STT) ----------------
+     Chrome's built-in recogniser drops most Hinglish and Safari/Firefox have none, so the card records each
+     utterance itself (getUserMedia + a loudness gate with pre-roll) and posts it to /stt (Groq Whisper, Roman
+     Hinglish). It falls back to the browser recogniser when the mic is denied or /stt answers 503. */
+  const MIC = { stream: null, actx: null, an: null, ok: null, stop: null, raf: 0, noise: 0.01 };
+  async function micStream() {
+    if (MIC.stream && MIC.stream.active) return MIC.stream;
+    MIC.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    MIC.actx = MIC.actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (MIC.actx.state === "suspended") await MIC.actx.resume();
+    MIC.an = MIC.actx.createAnalyser(); MIC.an.fftSize = 1024; MIC.an.smoothingTimeConstant = 0.4;
+    MIC.actx.createMediaStreamSource(MIC.stream).connect(MIC.an);
+    return MIC.stream;
+  }
+  const micBuf = new Float32Array(1024);
+  function micLevel() {
+    MIC.an.getFloatTimeDomainData(micBuf);
+    let s = 0; for (let i = 0; i < micBuf.length; i++) s += micBuf[i] * micBuf[i];
+    return Math.sqrt(s / micBuf.length);
+  }
+  /* mic level -> the small wave in the corner, so the customer sees she is hearing them */
+  function meter(v) {
+    const w = $("wave");
+    if (!v) { if (!document.body.classList.contains("speaking")) w.innerHTML = ""; return; }
+    if (w.children.length !== 10) { w.innerHTML = ""; for (let i = 0; i < 10; i++) { const b = document.createElement("i"); w.appendChild(b); } }
+    [...w.children].forEach((b) => { b.style.height = (3 + v * 9 * (0.6 + Math.random() * 0.4)).toFixed(0) + "px"; });
+  }
+  async function sttUpload(blob) {
+    try {
+      // session_id lets the server keep this utterance's audio with the conversation record
+      const r = await fetch("/stt" + (state.sid ? "?session_id=" + encodeURIComponent(state.sid) : ""), { method: "POST", headers: { "Content-Type": blob.type || "audio/webm" }, body: blob });
+      if (r.status === 503 || r.status === 404) { MIC.ok = false; return ""; }
+      if (!r.ok) return "";
+      MIC.ok = true;
+      return ((await r.json()).text || "").trim();
+    } catch (e) { return ""; }
+  }
+  async function listenVad() {
+    let mime;
+    try {
+      await micStream();
+      mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+    } catch (e) { mime = null; }
+    if (!mime) return false;
+    $("mic").classList.add("rec"); $("mic").classList.remove("hold"); document.body.classList.add("listening");
+    setStatus("listening", true); react("listening");
+    let rec = null, chunks = [], speechMs = 0, silenceMs = 0, segStart = 0, last = performance.now(), done = false;
+    const newSeg = () => {                                   // fresh recorder = fresh WebM header (pre-roll of <4 s)
+      if (rec && rec.state !== "inactive") { const old = rec; old.ondataavailable = null; old.stop(); }
+      rec = new MediaRecorder(MIC.stream, { mimeType: mime }); chunks = [];
+      const me = rec; rec.ondataavailable = (e) => { if (e.data.size && rec === me) chunks.push(e.data); };
+      rec.start(200); segStart = performance.now();
+    };
+    const stopRec = (keep) => new Promise((res) => {
+      if (!rec || rec.state === "inactive") return res(null);
+      const me = rec; me.onstop = () => { res(keep && chunks.length ? new Blob(chunks, { type: mime }) : null); chunks = []; };
+      me.stop(); rec = null;
+    });
+    // Early STT: ~350 ms into a pause the chunks so far (a complete WebM) go to /stt while we keep listening;
+    // if the pause turns out to be the end of the turn (650 ms) the text is already (nearly) there, which
+    // takes ~300 ms off every reply. If the customer continues, the early result is dropped.
+    let early = null;
+    const finish = async (blob) => {
+      if (done) return; done = true;
+      cancelAnimationFrame(MIC.raf); MIC.raf = 0; MIC.stop = null;
+      state.listening = false; $("mic").classList.remove("rec"); document.body.classList.remove("listening"); meter(0);
+      const pre = early; early = null;
+      if (!state.active) return;
+      if (blob && blob.size > 1500) {
+        setStatus("thinking", true);
+        let text = pre ? await pre.catch(() => "") : "";
+        if (!text) text = await sttUpload(blob);
+        if (text) { send(text); return; }
+        if (MIC.ok === false) { listen(); return; }           // /stt is gone: listen() now takes the browser recogniser
+      }
+      setStatus(state.muted ? "mic off" : "ready", true); react("idle");
+      if (state.handsFree && !state.muted && !state.busy) setTimeout(listen, 250);
+    };
+    MIC.stop = () => { stopRec(false).then(() => finish(null)); };   // mute / interrupt / her turn: discard
+    newSeg();
+    const tick = async () => {
+      if (done) return;
+      const now = performance.now(), dt = Math.min(100, now - last); last = now;
+      const lvl = micLevel();
+      if (!speechMs) MIC.noise = MIC.noise * 0.97 + lvl * 0.03;                 // adaptive room floor
+      const gate = Math.max(0.010, MIC.noise * 3);
+      meter(Math.min(1, lvl / (gate * 5)));
+      if (lvl > gate) { speechMs += dt; silenceMs = 0; early = null; } else { silenceMs += dt; if (speechMs < 250 && silenceMs > 400) speechMs = 0; }
+      if (!speechMs && now - segStart > 4000) newSeg();                        // nobody talking yet: trim the pre-roll
+      const len = now - segStart;
+      if (speechMs > 300 && silenceMs > 350 && !early && chunks.length) early = sttUpload(new Blob(chunks, { type: mime }));
+      if (speechMs > 300 && silenceMs > 650) return finish(await stopRec(true));   // utterance ended (650 ms: Hinglish pauses mid-sentence are ~300-500 ms)
+      if (len > 20000 && speechMs > 300) return finish(await stopRec(true));       // very long turn: cut and send
+      MIC.raf = requestAnimationFrame(tick);
+    };
+    MIC.raf = requestAnimationFrame(tick);
+    return true;
+  }
+
+  async function listen() {
+    if (!state.active || state.closed || state.muted || state.busy || state.listening) return;
+    if ($("composer").classList.contains("text")) return;            // keyboard mode: no open mic
+    if (document.hidden) { state.rearm = true; return; }              // background tab: no open mic; re-armed on visibilitychange
+    if (MIC.ok !== false) {
+      state.listening = true;
+      if (await listenVad()) return;
+      state.listening = false; MIC.ok = false;                         // mic denied or no recorder: browser recogniser
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { $("txt").focus(); $("composer").classList.add("text"); add("Mic available nahi hai — neeche type karke poochiye.", "bc"); return; }
+    const rec = new SR();
+    rec.lang = "en-IN"; rec.continuous = false; rec.interimResults = true;
+    state.rec = rec; state.listening = true;
+    $("mic").classList.add("rec"); $("mic").classList.remove("hold"); document.body.classList.add("listening");
+    setStatus("listening", true); react("listening");
+    let finalText = "", denied = false;
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      $("txt").placeholder = interim ? interim : "Type your question…";
+    };
+    rec.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        denied = true; state.muted = true; $("mic").classList.add("muted");
+        add("Mic permission nahi mili — neeche type karke poochiye.", "bc"); $("composer").classList.add("text"); $("txt").focus();
+      }
+    };
+    rec.onend = () => {
+      state.listening = false; state.rec = null;
+      $("mic").classList.remove("rec"); document.body.classList.remove("listening");
+      $("txt").placeholder = "Type your question…";
+      if (!state.active) return;
+      const t = (finalText || "").trim();
+      if (t) { send(t); return; }
+      setStatus(state.muted ? "mic off" : "ready", true); react("idle");
+      // nothing heard: keep the mic open (hands-free) unless muted / denied / typing
+      if (state.handsFree && !state.muted && !denied) setTimeout(listen, 300);
+    };
+    try { rec.start(); } catch (e) { state.listening = false; }
+  }
+  function stopMic() { try { state.rec && state.rec.stop(); } catch (e) {} if (MIC.stop) MIC.stop(); }
+  /* user taps the avatar while she talks: cut the current clip (local, Simli or browser voice) and listen */
+  function interrupt() {
+    state.interrupt = true;
+    try { if (state.audio) { state.audio.pause(); state.audio.removeAttribute("src"); state.audio.load(); } } catch (e) {}  // also stops the download
+    if (SPK.pending) SPK.pending(true);          // load() cancels the queued "pause" event, so resolve the clip's promise here
+    try { LIVE.simli && LIVE.simli.ClearBuffer && LIVE.simli.ClearBuffer(); } catch (e) {}
+    try { speechSynthesis.cancel(); } catch (e) {}
+    if (LIVE.waiting) { const w = LIVE.waiting; LIVE.waiting = null; w(); }
+    // speak() clears the flag when it unwinds and re-arms the mic
+  }
+
+  async function send(text) {
+    if (!state.sid || state.busy || !text) return;
+    state.busy = true; stopMic();
+    add(text, "user");
+    typing(true); setStatus("thinking", true);
+
+    const pending = []; let speaking = false; const turnAt = Date.now();
+    // a tap on the portrait (interrupt) drops the rest of this reply, not just the sentence that was playing
+    const cut = () => state.interrupt || (state.cutAt || 0) >= turnAt;
+    async function drain() {
+      if (speaking) return;
+      speaking = true;
+      while (pending.length) { if (cut()) { pending.length = 0; break; } await speak([pending.shift()]); }
+      speaking = false;
+    }
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: state.sid, text })
+      });
+      const reader = res.body.getReader(); const dec = new TextDecoder();
+      let buf = "", bot = null;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n\n")) >= 0) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2);
+          const ev = /event: (.*)/.exec(block)?.[1]?.trim();
+          const raw = /data: (.*)/.exec(block)?.[1];
+          if (!raw) continue;
+          const d = JSON.parse(raw);
+          if (ev === "backchannel" && d.text) { add(d.text, "bc"); react("backchannel"); sayBackchannel(d.text); }  // "haan ji" → head wobble + spoken at once
+          if (ev === "sentence") {
+            typing(false);
+            if (!bot) bot = add("", "bot");
+            bot.textContent += (bot.textContent ? " " : "") + d.text;
+            prefetchClip(d.text, d.emotion);         // download starts now, playback when its turn comes
+            pending.push(d); drain();
+          }
+          if (ev === "final") {
+            typing(false);
+            if (bot) bot.textContent = d.text;
+            setStatus("ready", true);
+          }
+          if (ev === "error") { typing(false); add("Sorry, ek second rukiye.", "bot"); }
+        }
+      }
+      await drain();
+    } catch (e) {
+      typing(false); add("Connection slow hai, ek baar phir bhejiye.", "bot");
+    }
+    state.busy = false;
+    if (state.active) listen();
+  }
+
+  /* overlay controls: keyboard toggle, close/end -> tell the host widget to collapse */
+  $("kbd").addEventListener("click", () => {
+    const on = $("composer").classList.toggle("text");
+    if (on) { stopMic(); $("txt").focus(); } else if (state.active) listen();
+  });
+  /* pauseCard: the card is hidden (our close button, or the host collapsed the panel) — mic off, any speech
+     cut, idle motion stopped. resumeCard: the host showed the panel again (hhbot:open) — motion and the
+     hands-free mic come back; the session itself is kept. */
+  function pauseCard() {
+    state.closed = true; state.rearm = false;
+    stopMic();
+    if (document.body.classList.contains("speaking")) interrupt();   // speak() unwinds and clears the flag
+    try { speechSynthesis.cancel(); } catch (e) {}
+    microMotionStop();
+  }
+  function resumeCard() {
+    if (!state.closed) return;
+    state.closed = false;
+    microMotionStart();
+    if (state.active && !state.busy) setTimeout(listen, 200);
+  }
+  const closeCard = () => { pauseCard(); postToHost({ type: "hhbot:close" }); };
+  /* normal card <-> mini (passport-size photo). Not remembered: a new page load always opens the full card. */
+  function setSize(mini, announce = true) {
+    document.body.classList.toggle("mini", !!mini);
+    const b = $("sizebtn"); b.title = mini ? "Poora card" : "Chhota karein (photo)"; b.setAttribute("aria-label", mini ? "restore" : "minimize");
+    if (announce) postToHost({ type: "hhbot:size", size: mini ? "mini" : "normal" });
+  }
+  $("sizebtn").addEventListener("click", (e) => { e.stopPropagation(); setSize(!document.body.classList.contains("mini")); });
+  // tap the photo: full card (capture + stop, so the tap does not also count as a barge-in tap on Neha)
+  $("stage").addEventListener("click", (e) => { if (document.body.classList.contains("mini")) { e.stopImmediatePropagation(); setSize(false); } }, true);
+  window.__hhSetSize = setSize;
+  /* End of the call: the server finishes the record (analysis, audio merge) and forgets the session.
+     Close (✕) only hides the card and keeps the session; the red handset ends it. */
+  function endCall(beacon) {
+    const sid = state.sid; if (!sid) return;
+    state.sid = null; state.active = false;
+    const body = JSON.stringify({ session_id: sid });
+    if (beacon && navigator.sendBeacon) navigator.sendBeacon("/end", body);
+    else fetch("/end", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true }).catch(() => {});
+  }
+  $("closebtn").addEventListener("click", closeCard);
+  $("endbtn").addEventListener("click", () => { closeCard(); endCall(false); });
+  window.addEventListener("pagehide", () => endCall(true));
+
+  /* pre-start copy follows the persona: a service advisor does not pitch test drives */
+  (async function brandCopy() {
+    try {
+      const d = await (await fetch("/personas")).json();
+      const p = (d.personas || []).find((x) => x.id === (q.get("persona") || d.default));
+      if (!p) return;
+      const service = p.business_type === "service";
+      $("agent").textContent = service ? "Service advisor" : "Sales consultant";
+      $("brand").textContent = p.company;
+      $("pitch").textContent = service
+        ? "Talk to a service advisor on video. Ask about car service, repair costs, pickup or a workshop near you."
+        : "Talk to a real sales consultant on video. Ask about price, offers or a test drive.";
+      document.querySelector(".note").firstChild.textContent = (service ? "AI service advisor" : "AI sales consultant") + ". Yeh baat-cheet record hoti hai — say \"human\" any time for a call back.";
+    } catch (e) { /* keep defaults */ }
+  })();
+
+  /* A long-lived random id in this browser: how the server recognises a returning customer and picks the
+     earlier conversation back up. No personal data; cleared with site data. */
+  function visitorId() {
+    try {
+      let v = localStorage.getItem("hhbot_vid");
+      if (!v || !/^[A-Za-z0-9_-]{8,64}$/.test(v)) {
+        v = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
+        localStorage.setItem("hhbot_vid", v);
+      }
+      return v;
+    } catch (e) { return ""; }
+  }
+  async function start() {
+    $("start").classList.add("hide");
+    document.body.classList.remove("pre");
+    state.active = true; state.started = Date.now();
+    setStatus("connecting", false);
+    const body = { persona: q.get("persona") || undefined, sessionContext: Object.assign({}, ctx, { visitor: visitorId() || undefined }) };
+    try {
+      const r = await fetch("/session", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+      });
+      const s = await r.json();
+      state.sid = s.session_id;
+      if (s.persona) {
+        $("agent").textContent = s.persona.name;
+        $("brand").textContent = s.persona.company;
+      }
+      setStatus("live", true);
+      react("greeting", null, { once: true });       // plays through once, then idle
+      add(s.greeting, "bot");
+      await speak(s.chunks);
+      setStatus("ready", true);
+      listen();
+    } catch (e) {
+      setStatus("offline", false);
+      add("Main abhi connect nahi ho payi. Aap callback request kar sakte hain.", "bot");
+    }
+  }
+
+  $("go").onclick = start;
+  // Opened from the launcher: greet at once. Without any user activation in this frame yet (iOS Safari does not
+  // hand the host page's tap down to the iframe) the Start button stays, so the first play() happens in a tap.
+  const activated = !(navigator.userActivation && !navigator.userActivation.hasBeenActive);
+  if (q.get("autostart") === "1" && activated) start();
+  // mic button = mute / unmute the always-open mic
+  $("mic").onclick = () => {
+    state.muted = !state.muted;
+    $("mic").classList.toggle("muted", state.muted);
+    if (state.muted) { stopMic(); setStatus("mic off", true); } else { setStatus("ready", true); listen(); }
+  };
+  $("stage").addEventListener("click", () => { if (document.body.classList.contains("speaking")) interrupt(); });
+  $("send").onclick = () => {
+    const t = $("txt").value.trim();
+    if (!t) return;
+    $("txt").value = ""; send(t);
+  };
+  $("txt").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("send").click();
+  });
+  window.addEventListener("message", (e) => {
+    if (!fromTrustedOrigin(e)) return;                       // only the host page (and same-origin pages) may drive the card
+    const d = e.data || {};
+    if (d.type === "hhbot:ctx" && d.ctx) ctx = d.ctx;
+    if (d.type === "hhbot:close") pauseCard();
+    if (d.type === "hhbot:open") resumeCard();
+    if (d.type === "hhbot:open" && document.body.classList.contains("mini")) setSize(false); // re-opened from the launcher: full card
+  });
+  /* background tab: the open mic and the idle motion stop; when the tab is back the mic re-arms (hands-free) */
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (state.listening) state.rearm = true;
+      stopMic(); microMotionStop();
+    } else {
+      if (!state.closed) microMotionStart();
+      if (state.rearm) { state.rearm = false; if (state.active && !state.closed && !state.busy) setTimeout(listen, 300); }
+    }
+  });
+})();
+</script>
+</body>
+</html>

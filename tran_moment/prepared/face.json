@@ -1,0 +1,84 @@
+{
+ "version": 1,
+ "width": 640,
+ "height": 852,
+ "source": "voice_clone\\src\\face.png",
+ "points": {
+  "mouth_left": [
+   248.8,
+   377.5
+  ],
+  "mouth_right": [
+   394.4,
+   378.8
+  ],
+  "lip_top": [
+   319.6,
+   378.5
+  ],
+  "lip_upper_inner": [
+   319.8,
+   394.2
+  ],
+  "lip_lower_inner": [
+   320.1,
+   394.6
+  ],
+  "lip_bottom": [
+   320.2,
+   422.1
+  ],
+  "chin": [
+   323.8,
+   495.4
+  ],
+  "nose_bottom": [
+   319.8,
+   352.4
+  ],
+  "nose_tip": [
+   319.3,
+   342.6
+  ],
+  "eye_l_outer": [
+   210.3,
+   231.1
+  ],
+  "eye_l_inner": [
+   277.9,
+   240.4
+  ],
+  "eye_l_top": [
+   237.0,
+   218.9
+  ],
+  "eye_l_bottom": [
+   241.5,
+   242.6
+  ],
+  "brow_l": [
+   214.3,
+   172.2
+  ],
+  "eye_r_inner": [
+   361.7,
+   240.2
+  ],
+  "eye_r_outer": [
+   429.9,
+   229.8
+  ],
+  "eye_r_top": [
+   402.3,
+   217.9
+  ],
+  "eye_r_bottom": [
+   398.7,
+   241.6
+  ],
+  "brow_r": [
+   422.4,
+   171.3
+  ]
+ }
+}

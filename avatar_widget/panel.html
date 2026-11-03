@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Talk to Neha</title>
+<script>
+  // Cache-busting: loader.js opens panel.html?v=VERSION; the same query is applied to every module
+  // through an import map (resolved URLs are remapped, so widget.js's own imports get it too).
+  (function () {
+    var v = new URLSearchParams(location.search).get("v") || "";
+    if (!v || !("supports" in HTMLScriptElement) || !HTMLScriptElement.supports("importmap")) return;
+    var imports = {};
+    ["widget", "session", "transport", "audio", "avatar", "events", "motion-data"].forEach(function (f) {
+      imports["./src/" + f + ".js"] = "./src/" + f + ".js?v=" + encodeURIComponent(v);
+    });
+    var s = document.createElement("script");
+    s.type = "importmap";
+    s.textContent = JSON.stringify({ imports: imports });
+    document.head.appendChild(s);
+  })();
+</script>
+<style>
+  :root { --accent: #0b2f6b; --ring: #2f8bff; --bg: #0e1116; --fg: #f4f6fb; --mouth: 0; --jaw: 0; --mouth-w: 1; --tx: 0%; --ty: 0%; --rot: 0deg; --zoom: 1.14; --level: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overflow: hidden; }
+  .stage { position: relative; height: 100%; }
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: linear-gradient(180deg, rgba(0,0,0,.55), transparent); position: absolute; inset: 0 0 auto 0; z-index: 2; }
+  header .dot { width: 9px; height: 9px; border-radius: 50%; background: #39d98a; box-shadow: 0 0 0 4px rgba(57,217,138,.2); }
+  header b { font-weight: 600; } header small { opacity: .75; display: block; font-size: 12px; }
+  header .ai { margin-left: auto; font-size: 11px; opacity: .7; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; padding: 2px 8px; }
+  /* The face fills the stage (header/footer float over it). It used to be a grid row sized by its
+     absolutely-positioned children, i.e. 0 px tall, which hid the portrait and the video. */
+  .face { position: absolute; inset: 0; overflow: hidden; background: #111; }
+  .face video, .face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .face video { opacity: 0; transition: opacity .4s; } .face video.live { opacity: 1; }
+  .face img { transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--rot)) scale(var(--zoom)); transform-origin: 50% 62%; will-change: transform; }
+  @media (prefers-reduced-motion: reduce) { .face img { transform: scale(1.06); } }
+  /* Blink: a soft eyelid band confined to the eyes' height (portrait eyes sit at ~20% of the box at
+     --zoom 1.14), faded in over 90 ms, instead of dimming the whole portrait. */
+  /* --eye-y / --mouth-y are set from the portrait's landmarks (/avatar_puppet/face.json) at load, so a new
+     portrait keeps blink and mouth in the right place; the defaults match the original framing. */
+  .face::before { content: ""; position: absolute; z-index: 1; left: 24%; right: 24%; top: calc(var(--eye-y, 20%) - 4.5%); height: 9%; border-radius: 50%; background: radial-gradient(ellipse 55% 60% at 50% 50%, rgba(58,32,30,.6), rgba(58,32,30,0) 72%); opacity: 0; transition: opacity 90ms ease; pointer-events: none; }
+  .face.blink::before { opacity: 1; }
+  /* puppet mouth: a soft shadow driven by voice-band energy (no face landmarks needed).
+     --mouth is already smoothed in avatar.js; --jaw drops the patch, --mouth-w spreads it.
+     The portrait's lips sit at ~35-38% of the box height once the image covers the stage. */
+  .face::after { content: ""; position: absolute; z-index: 1; left: 50%; top: calc(var(--mouth-y, 35%) + var(--jaw) * .6%); width: calc(10% * var(--mouth-w)); height: calc(1.1% + var(--mouth) * 5.4%); transform: translateX(-50%); border-radius: 50%; background: rgba(40,10,20,.55); filter: blur(3px); opacity: calc(var(--mouth) * .9); pointer-events: none; }
+  body[data-state="speaking"] .face::after { transition: height .05s linear, width .12s ease; }
+  .status { position: absolute; left: 0; right: 0; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); text-align: center; font-size: 13px; letter-spacing: .02em; opacity: .85; text-shadow: 0 1px 2px #000; z-index: 2; }
+  .status:empty { display: none; }
+  .level { position: absolute; left: 50%; bottom: calc(120px + env(safe-area-inset-bottom, 0px)); width: 46px; height: 46px; margin-left: -23px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); transform: scale(calc(1 + var(--level) * .9)); opacity: calc(.25 + var(--level)); transition: transform .08s, opacity .08s; pointer-events: none; z-index: 2; }
+  body:not([data-state="listening"]) .level { display: none; }
+  footer { display: flex; justify-content: center; gap: 28px; padding: 18px 0 calc(22px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(0deg, rgba(0,0,0,.6), transparent); position: absolute; inset: auto 0 0 0; z-index: 2; }
+  button { all: unset; cursor: pointer; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); backdrop-filter: blur(8px); transition: transform .12s, background .2s; }
+  button:active { transform: scale(.94); }
+  button svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #mic[data-on="1"] { background: var(--ring); box-shadow: 0 0 0 6px rgba(47,139,255,.25); }
+  #end { background: #e5484d; }
+  body[data-state="connecting"] .face img { filter: grayscale(.4) brightness(.8); }
+  body[data-state="ended"] footer, body[data-state="ended"] .level { display: none; }
+  .ended { position: absolute; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.65); z-index: 3; text-align: center; padding: 24px; }
+  body[data-state="ended"] .ended { display: grid; }
+  .ended button { width: auto; height: auto; border-radius: 999px; padding: 10px 18px; background: var(--ring); font-weight: 600; }
+  /* "Tap to start": shown when the panel was opened without a gesture inside this frame (iOS). */
+  .tap { position: absolute; inset: 0; display: none; place-items: center; z-index: 3; background: rgba(0,0,0,.35); cursor: pointer; }
+  body[data-state="tap"] .tap { display: grid; }
+  .tap span { border-radius: 999px; padding: 12px 22px; background: var(--ring); font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+</style>
+</head>
+<body data-state="idle">
+<div class="stage">
+  <header>
+    <span class="dot" aria-hidden="true"></span>
+    <div><b id="name">Neha</b><small id="sub"></small></div>
+    <span class="ai">AI consultant</span>
+  </header>
+  <div class="face">
+    <img id="img" alt="" draggable="false">
+    <video id="video" autoplay playsinline muted></video>
+    <div class="level" id="level" aria-hidden="true"></div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </div>
+  <footer>
+    <button id="mic" title="Microphone" aria-label="Microphone" data-on="0">
+      <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+    </button>
+    <button id="end" title="End call" aria-label="End call">
+      <svg viewBox="0 0 24 24"><path d="M3 11c5-4 13-4 18 0l-2 3-4-1v-2a9 9 0 0 0-6 0v2l-4 1z"/></svg>
+    </button>
+  </footer>
+  <div class="tap" id="tap" role="button" tabindex="0" aria-label="Tap to start the call"><span>Tap to start</span></div>
+  <div class="ended"><div><p>Thanks for talking to us.</p><button id="again">Call again</button></div></div>
+</div>
+<script type="module">
+  import { createWidget } from "./src/widget.js";
+  const q = new URLSearchParams(location.search);
+  const api = q.get("api") || "http://127.0.0.1:4001";
+  const accent = q.get("accent"); if (accent) document.documentElement.style.setProperty("--accent", accent);
+  const ring = q.get("ring"); if (ring) document.documentElement.style.setProperty("--ring", ring);
+  const ui = Object.fromEntries(["video","img","status","level","name","sub"].map((id) => [id, document.getElementById(id)]));
+  ui.micBtn = document.getElementById("mic"); ui.endBtn = document.getElementById("end");
+  const tap = document.getElementById("tap");
+  // Used by the widget when aw:open arrives while audio is still blocked in this frame (no in-frame
+  // gesture yet): the first tap happens inside the iframe, which is what unlocks playback on iOS.
+  ui.tapToStart = (fn) => {
+    document.body.dataset.state = "tap";
+    const go = () => { if (document.body.dataset.state === "tap") document.body.dataset.state = "idle"; fn(); };
+    tap.addEventListener("pointerdown", go, { once: true });
+    tap.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") go(); }, { once: true });
+  };
+  const widget = createWidget({
+    api, ws: q.get("ws") || "", persona: q.get("persona") || "", voice: q.get("voice") || "",
+    lang: q.get("lang") || "hi-IN", portrait: q.get("portrait") || api + "/avatar.jpg",
+    hostOrigin: q.get("host") || "", ui,
+  });
+  // Any tap inside the frame unlocks the output AudioContext (autoplay policy, iOS in particular).
+  document.addEventListener("pointerdown", () => widget.unlock(), { capture: true, passive: true });
+  // Place the blink band and the mouth patch from the portrait's landmarks: the 640x852 image covers the
+  // stage (object-fit: cover, centred) and is then scaled by --zoom (1.14) about 50% 62%.
+  (async () => {
+    try {
+      const r = await fetch(api + "/avatar_puppet/face.json");
+      if (!r.ok) return;
+      const d = await r.json(); const p = d.points || {}; if (!p.eye_l_outer || !p.lip_upper_inner) return;
+      const face = ui.img.parentElement; const W = face.clientWidth, H = face.clientHeight;
+      const s = Math.max(W / d.width, H / d.height), offY = (H - d.height * s) / 2, oy = 0.62 * H, zoom = 1.14;
+      const toPct = (y) => ((oy + (offY + y * s - oy) * zoom) / H * 100).toFixed(1) + "%";
+      face.style.setProperty("--eye-y", toPct((p.eye_l_outer[1] + p.eye_r_outer[1]) / 2));
+      face.style.setProperty("--mouth-y", toPct(p.lip_upper_inner[1] - 4));
+    } catch { /* defaults stay */ }
+  })();
+  // The panel is opened by a user click on the host page, so autoplay/mic are allowed to start here.
+  // When embedded, the loader sends aw:ctx then aw:open; when opened directly, start on first tap.
+  const standalone = window.parent === window;
+  if (standalone) ui.tapToStart(() => widget.start());
+  document.getElementById("again").addEventListener("click", () => location.reload());
+  window.__aw = widget; // debugging / test handle (session, start(), end())
+</script>
+</body>
+</html>

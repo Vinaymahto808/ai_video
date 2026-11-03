@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Human Bot — live video sales agent</title>
+<style>
+  :root { --bg:#0b0d10; --panel:#14181d; --line:#232a32; --ink:#e8eef6; --dim:#8b98a8; --acc:#e53935; --ok:#31c48d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 Inter,Segoe UI,system-ui,sans-serif; }
+  .wrap { max-width:1120px; margin:0 auto; padding:20px; display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:18px; }
+  header { grid-column:1/-1; display:flex; align-items:center; gap:12px; }
+  header h1 { font-size:17px; margin:0; font-weight:600; letter-spacing:.2px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--dim); }
+  .dot.live { background:var(--ok); box-shadow:0 0 0 4px rgba(49,196,141,.15); }
+  .pill { margin-left:auto; font-size:12px; color:var(--dim); border:1px solid var(--line); padding:5px 10px; border-radius:999px; }
+  .stage { position:relative; background:#000; border:1px solid var(--line); border-radius:14px; overflow:hidden; aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; }
+  .stage img { width:100%; height:100%; object-fit:cover; filter:saturate(1.02); }
+  .stage.speaking img { animation:breathe 3.2s ease-in-out infinite; }
+  @keyframes breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.012)} }
+  .hud { position:absolute; left:12px; bottom:10px; right:12px; display:flex; gap:8px; align-items:center; font-size:11px; color:#cfd8e3; }
+  .hud span { background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12); padding:4px 8px; border-radius:6px; backdrop-filter:blur(6px); }
+  .wave { display:flex; gap:3px; align-items:flex-end; height:16px; }
+  .wave i { width:3px; background:var(--ok); border-radius:2px; height:4px; transition:height .09s linear; }
+  .controls { display:flex; gap:10px; margin-top:12px; }
+  button { font:inherit; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); padding:11px 16px; cursor:pointer; }
+  button:hover { border-color:#3a4552; }
+  button.primary { background:var(--acc); border-color:var(--acc); font-weight:600; }
+  button.stop { background:#2a1417; border-color:#5b2229; color:#ff9b9b; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; display:flex; flex-direction:column; min-height:420px; max-height:calc(100vh - 130px); }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:0; padding:14px 16px; border-bottom:1px solid var(--line); }
+  #log { flex:1; overflow:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:92%; padding:9px 12px; border-radius:12px; font-size:14px; white-space:pre-wrap; }
+  .msg.user { align-self:flex-end; background:#1d2a3a; border:1px solid #2a3d55; }
+  .msg.bot { align-self:flex-start; background:#171d24; border:1px solid var(--line); }
+  .msg.bc { align-self:flex-start; color:var(--dim); font-style:italic; font-size:12.5px; background:none; border:none; padding:0 4px; }
+  .meta { font-size:11px; color:var(--dim); padding:10px 16px; border-top:1px solid var(--line); display:flex; gap:10px; flex-wrap:wrap; }
+  #report { grid-column:1/-1; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; display:none; }
+  #report pre { white-space:pre-wrap; font-size:12.5px; color:#c7d2de; margin:0; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .HOT { background:#3a1114; color:#ff8d8d; } .WARM { background:#3a2a10; color:#ffc46b; } .COLD { background:#16222e; color:#8fb3d9; }
+  @media (max-width:900px){ .wrap{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1>Human Bot <span id="brandname" style="color:var(--dim);font-weight:400">· showroom</span></h1>
+    <select id="brand" title="brand persona"
+      style="background:#111a24;color:#cfdae6;border:1px solid #22303f;border-radius:8px;padding:6px 8px;font-size:12.5px">
+    </select>
+    <span class="pill" id="provider">connecting…</span>
+  </header>
+
+  <section>
+    <div class="stage" id="stage">
+      <img src="/avatar.jpg" alt="agent" onerror="this.style.display='none'" />
+      <div class="hud">
+        <span id="state">idle</span>
+        <span id="emo">neutral</span>
+        <span id="lat">—</span>
+        <div class="wave" id="wave"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="talk">Start call</button>
+      <button id="mute" disabled>Mic off</button>
+      <button class="stop" id="end" disabled>End &amp; analyse</button>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h2>Conversation</h2>
+    <div id="log"></div>
+    <div class="meta" id="meta"><span>words —</span><span>questions —</span><span>backchannels —</span></div>
+  </aside>
+
+  <section id="report"><h2 style="font-size:12px;letter-spacing:.08em;color:var(--dim);margin:0 0 10px">Post-call intelligence</h2><pre id="report-body"></pre></section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const state = { sid:null, listening:false, busy:false, rec:null, chunks:0, words:0, questions:0, bcs:0, started:0 };
+
+function add(text, cls="bot") {
+  const d = document.createElement("div");
+  d.className = "msg " + cls;
+  d.textContent = text;
+  $("log").appendChild(d);
+  $("log").scrollTop = 1e9;
+  return d;
+}
+function setState(s){ $("state").textContent = s; $("stage").classList.toggle("speaking", s==="speaking"); }
+function wave(active){
+  const w = $("wave"); w.innerHTML = "";
+  if(!active) return;
+  for(let i=0;i<12;i++){ const b=document.createElement("i"); b.style.height="4px"; w.appendChild(b); }
+  state.waveT = setInterval(()=>{ [...w.children].forEach(b=> b.style.height = (4 + Math.random()*12).toFixed(0)+"px"); }, 90);
+}
+function stopWave(){ clearInterval(state.waveT); wave(false); }
+
+/* ---------------- TTS: browser voices, chunked so speech starts early ---------------- */
+/* Female Indian voice first: the demo has to sound like Riya, not like the OS default. Windows ships
+   "Microsoft Heera" (en-IN) and "Microsoft Kalpana" (hi-IN); Chrome adds "Google हिन्दी". */
+const FEMALE = /female|heera|kalpana|swara|neerja|veena|anjali|priya|riya|neha|kavya|aditi|shreya|google\s*(हिन्दी|hindi)/i;
+const MALE = /\bmale\b|aarav|\bravi\b|prabhat|hemant|mohan|david|mark|george|daniel|alex|fred/i;
+function pickVoice(wantHi){
+  const vs = speechSynthesis.getVoices();
+  const lang = wantHi ? /hi-IN/i : /en-IN/i;
+  const score = v => (lang.test(v.lang)
+    ? 10 + (FEMALE.test(v.name) ? 5 : 0) - (MALE.test(v.name) ? 8 : 0) + (/google/i.test(v.name) ? -1 : 0)
+    : (FEMALE.test(v.name) ? 2 : 0) - (MALE.test(v.name) ? 4 : 0));
+  return vs.slice().sort((a,b)=>score(b)-score(a))[0] || null;
+}
+speechSynthesis.onvoiceschanged = ()=>pickVoice(false); pickVoice(false);
+
+function speakBrowser(c){
+  return new Promise(res=>{
+    const isHi = /[\u0900-\u097F]/.test(c.text);
+    const voice = pickVoice(isHi);
+    const u = new SpeechSynthesisUtterance(c.text);
+    if(voice) u.voice = voice;
+    u.lang = voice && voice.lang ? voice.lang : (isHi ? "hi-IN" : "en-IN");
+    u.rate = 1.0; u.pitch = c.emotion === "enthusiastic" ? 1.08 : 1.0;
+    $("emo").textContent = c.emotion + " · " + c.gesture;
+    u.onend = res; u.onerror = res;
+    speechSynthesis.speak(u);
+  });
+}
+
+/* server-side neural TTS first (natural); browser voice only if it is unavailable */
+let ttsOk = null;
+async function speakChunk(c){
+  if(ttsOk !== false){
+    try{
+      const r = await fetch("/tts?text=" + encodeURIComponent(c.text));
+      if(!r.ok) throw new Error("tts " + r.status);
+      ttsOk = true;
+      const url = URL.createObjectURL(await r.blob());
+      $("emo").textContent = c.emotion + " · " + c.gesture;
+      await new Promise(res=>{ const a = new Audio(url); a.onended = res; a.onerror = res; a.play().catch(res); });
+      URL.revokeObjectURL(url);
+      return;
+    }catch(e){ ttsOk = false; }
+  }
+  return speakBrowser(c);
+}
+
+async function speak(chunks){
+  stopWave();
+  if(!chunks || !chunks.length) return;
+  setState("speaking"); wave(true); state.chunks = 0;
+  for(const c of chunks){ await speakChunk(c); state.chunks++; }
+  setState("idle"); stopWave();
+}
+
+/* ---------------- speech recognition ---------------- */
+function listen(onFinal){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR) { add("This browser has no SpeechRecognition. Type in the box below.", "bc"); manualInput(onFinal); return; }
+  const rec = new SR();
+  rec.lang = "en-IN"; rec.continuous = false; rec.interimResults = true;
+  state.rec = rec; state.listening = true; $("mute").textContent = "Mic on";
+  setState("listening"); wave(true);
+  let finalText = "";
+  rec.onresult = (e)=>{
+    let interim = "";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const t = e.results[i][0].transcript;
+      if(e.results[i].isFinal) finalText += t; else interim += t;
+    }
+    $("state").textContent = "listening" + (interim ? "…" : "");
+  };
+  rec.onerror = (e)=>{ if(e.error==="not-allowed") add("Mic permission blocked.", "bc"); };
+  rec.onend = ()=>{
+    state.listening = false; stopWave();
+    $("state").textContent = "idle";
+    const text = (finalText || "").trim();
+    if(text) onFinal(text); else if(state.active) setTimeout(()=>listen(onFinal), 250);
+  };
+  rec.start();
+}
+function manualInput(onFinal){
+  const t = prompt("Type what the customer says:");
+  if(t && t.trim()) onFinal(t.trim()); else if(state.active) setTimeout(()=>manualInput(onFinal), 200);
+}
+
+/* ---------------- turn ---------------- */
+async function send(text){
+  if(!state.sid || state.busy) return;
+  state.busy = true;
+  add(text, "user");
+  state.words += text.split(/\s+/).length;
+  if(text.includes("?")) state.questions++;
+  $("meta").innerHTML = `<span>words ${state.words}</span><span>questions ${state.questions}</span><span>backchannels ${state.bcs}</span>`;
+
+  const pending = [];        // sentence chunks waiting to be spoken
+  let speaking = false;
+
+  async function drain(){
+    if(speaking) return;
+    speaking = true;
+    while(pending.length) await speak([pending.shift()]);
+    speaking = false;
+  }
+
+  const t0 = performance.now();
+  const res = await fetch("/chat", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ session_id: state.sid, text })
+  });
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "", finalText = "", bot = null;
+
+  while(true){
+    const {value, done} = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, {stream:true});
+    let idx;
+    while((idx = buf.indexOf("\n\n")) >= 0){
+      const block = buf.slice(0, idx); buf = buf.slice(idx+2);
+      const ev = /event: (.*)/.exec(block)?.[1]?.trim();
+      const raw = /data: (.*)/.exec(block)?.[1];
+      if(!raw) continue;
+      const d = JSON.parse(raw);
+      if(ev === "backchannel" && d.text){ add(d.text, "bc"); state.bcs++; }
+      if(ev === "sentence"){
+        if(!bot) bot = add("", "bot");
+        bot.textContent += (bot.textContent ? " " : "") + d.text;
+        pending.push(d);
+        drain();
+      }
+      if(ev === "final"){
+        finalText = d.text;
+        $("lat").textContent = d.latency_ms + " ms";
+        if(bot) bot.textContent = finalText;
+      }
+      if(ev === "error") add("⚠ " + d.message, "bc");
+    }
+  }
+  state.busy = false;
+  if(state.active) setTimeout(()=>listen(send), 350);
+}
+
+/* ---------------- lifecycle ---------------- */
+async function start(){
+  $("talk").disabled = true; $("talk").textContent = "In call";
+  $("mute").disabled = false; $("end").disabled = false;
+  $("dot").classList.add("live"); state.active = true; state.started = Date.now();
+
+  const r = await fetch("/session", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ persona: $("brand").value,
+      sessionContext: { page:{ source:"human_bot_demo" } } })});
+  const s = await r.json();
+  state.sid = s.session_id;
+  $("provider").textContent = s.provider;
+  if(s.persona && s.persona.company) $("brandname").textContent = "· " + s.persona.company;
+  add(s.greeting, "bot");
+  await speak(s.chunks);
+  setTimeout(()=>listen(send), 250);
+}
+
+async function end(){
+  state.active = false;
+  if(state.rec) try{ state.rec.stop(); }catch(e){}
+  speechSynthesis.cancel(); stopWave(); setState("idle");
+  $("dot").classList.remove("live"); $("talk").disabled = false; $("talk").textContent = "Start call";
+  $("end").disabled = true; $("mute").disabled = true;
+  if(!state.sid) return;
+  const r = await fetch("/analyze", {method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({session_id: state.sid})});
+  const a = await r.json();
+  $("report").style.display = "block";
+  $("report-body").innerHTML = "";
+  const head = document.createElement("div");
+  head.style.marginBottom = "10px";
+  head.innerHTML = `Lead: <span class="badge ${a.lead_status}">${a.lead_status}</span>
+    &nbsp; Sentiment: <b>${a.sentiment}</b> (${a.sentiment_score})
+    &nbsp; Audit: <b>${a.audit_details.overall_score}/5</b> · CX <b>${a.audit_details.customer_experience_score}/10</b>`;
+  $("report-body").appendChild(head);
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(a, null, 2);
+  $("report-body").appendChild(pre);
+  $("report").scrollIntoView({behavior:"smooth"});
+}
+
+$("talk").onclick = start;
+$("end").onclick = end;
+$("mute").onclick = ()=>{
+  if(state.listening){ try{state.rec.stop();}catch(e){} $("mute").textContent="Mic off"; }
+  else { $("mute").textContent="Mic on"; listen(send); }
+};
+function brandName(){
+  const o = $("brand").selectedOptions[0];
+  const c = o ? o.textContent.split(" · ")[0] : "";
+  if(c) $("brandname").textContent = "· " + c;
+}
+$("brand").onchange = brandName;
+fetch("/personas").then(r=>r.json()).then(d=>{
+  const sel = $("brand");
+  d.personas.forEach(p=>{
+    const o = document.createElement("option");
+    o.value = p.id; o.textContent = (p.company || p.id) + " · " + (p.name || "");
+    sel.appendChild(o);
+  });
+  if(d.default) sel.value = d.default;
+  brandName();
+}).catch(()=>{});
+fetch("/health").then(r=>r.json()).then(h=>{
+  $("provider").textContent = h.provider + " · " + h.persona;
+  $("provider").title = "tts: " + h.tts + (h.tts_error ? " — " + h.tts_error : "");
+}).catch(()=>{});
+</script>
+</body>
+</html>

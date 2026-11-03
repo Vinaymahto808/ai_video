@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "POST /chat — request body and the text/event-stream events it returns",
+  "request": {
+    "type": "object", "required": ["session_id", "text"],
+    "properties": { "session_id": { "type": "string" }, "text": { "type": "string", "description": "final STT transcript of one user utterance" } }
+  },
+  "events": {
+    "meta":        { "data": { "generation": "integer", "provider": "string" }, "when": "first frame of every turn" },
+    "backchannel": { "data": { "text": "string" }, "when": "0-1 times before the answer (e.g. 'Hmm', 'Ji')" },
+    "sources":     { "data": { "results": [ { "title": "string", "url": "string", "score": "number" } ] }, "when": "once, if the persona has a knowledge block (strict KB answers)" },
+    "sentence":    { "data": { "index": "integer", "text": "string", "emotion": "neutral|warm|enthusiastic|concerned|thinking", "gesture": "string" }, "when": "each spoken sentence as soon as it is ready; play immediately" },
+    "interrupted": { "data": { "generation": "integer" }, "when": "a newer /chat for the same session superseded this one (barge-in); drop remaining events" },
+    "final":       { "data": { "text": "string", "chunks": "chunk[]", "latency_ms": "integer", "words": "integer" }, "when": "turn complete" },
+    "error":       { "data": { "error": "string" }, "when": "server-side failure; the turn ends" }
+  },
+  "ordering": "meta -> backchannel? -> sources? -> sentence* -> (interrupted | final | error)"
+}
