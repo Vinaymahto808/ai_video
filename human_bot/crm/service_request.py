@@ -16,8 +16,8 @@ import re
 
 REQUIRED = ("name", "phone", "car", "problem", "area")
 OPTIONAL = ("registration", "when", "pickup")
-LABEL_HI = {"name": "aapka naam", "phone": "mobile number", "car": "gaadi ka make aur model", "problem": "kya kaam karwana hai",
-            "area": "aap kis area mein hain", "registration": "gaadi ka number", "when": "kab convenient rahega", "pickup": "pickup chahiye ya workshop aayenge"}
+LABEL_HI = {"name": "aapka naam", "phone": "mobile number", "car": "car ka model aur number (ask both in the one question: \"Aapki car ka model aur number kya hai?\"; if only the model comes back, do not insist on the number)",
+            "problem": "kya kaam karwana hai", "area": "aap kis area mein hain", "registration": "gaadi ka registration number", "when": "kab convenient rahega", "pickup": "pickup chahiye ya workshop aayenge"}
 
 # spoken service -> ACR website service category (lookups/service-categories, 2026-11-03)
 SERVICE_SLUG = {
@@ -93,7 +93,7 @@ def wants_request(transcript: list[dict], slots: dict) -> bool:
 
 
 def summary_line(slots: dict) -> str:
-    bits = [slots.get("name"), slots.get("car"), slots.get("problem"), slots.get("area") and f"{slots['area']} se", slots.get("when"), "free pickup" if slots.get("pickup") == "yes" else None]
+    bits = [slots.get("name"), slots.get("car"), slots.get("registration"), slots.get("problem"), slots.get("area") and f"{slots['area']} se", slots.get("when"), "free pickup" if slots.get("pickup") == "yes" else None]
     return ", ".join(b for b in bits if b)
 
 

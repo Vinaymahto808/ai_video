@@ -359,6 +359,7 @@ class OfflineServiceBrain(OfflineBrain):
         self.areas = ["Gurgaon", "Delhi", "Noida"]
         self.context: list[dict] = []  # KB hits for the current turn, set by the server
         self.offered = False  # a pickup/call-back was offered last turn
+        self.asked_reg = False  # the registration number is asked once, never insisted on
 
     # -- slot filling ---------------------------------------------------------------
     def _remember(self, text: str) -> None:
@@ -384,10 +385,13 @@ class OfflineServiceBrain(OfflineBrain):
         if m:
             self.slots["when"] = m.group(1)
         # name and phone: the same patterns the server's service-request collector uses
-        from crm.service_request import NAME_RE, NAME_STOP, PHONE_RE  # noqa: PLC0415
+        from crm.service_request import NAME_RE, NAME_STOP, PHONE_RE, REG_RE  # noqa: PLC0415
         m = PHONE_RE.search(text)
         if m:
             self.slots["phone"] = m.group(1)
+        m = REG_RE.search(text)
+        if m:  # "DL 01 AB 1234": the registration number, asked together with the model
+            self.slots["registration"] = re.sub(r"[\s-]", "", m.group(1)).upper()
         m = NAME_RE.search(text)
         if m:
             words = [w for w in m.group(1).split() if w.lower() not in NAME_STOP]
@@ -397,7 +401,10 @@ class OfflineServiceBrain(OfflineBrain):
     def _next_question(self) -> str:
         s = self.slots
         if not s.get("car"):
-            return "Aapki gaadi kaunsi hai, make aur model?"
+            return "Aapki car ka model aur number kya hai?"
+        if not s.get("registration") and not self.asked_reg:
+            self.asked_reg = True  # asked once; a customer who does not have it handy is not asked again
+            return "Gaadi ka registration number bhi bata dijiye, record ke liye."
         if not s.get("service"):
             return "Gaadi mein kya problem hai, ya kaunsi service karwani hai?"
         if not s.get("area"):
@@ -412,7 +419,8 @@ class OfflineServiceBrain(OfflineBrain):
         # everything known: read it back and ask for the go-ahead (the server files the request on "haan")
         self.offered = True
         digits = " ".join(s["phone"])
-        return (f"{s['name']} ji, {s['car']} ki {s['service']}, {s['area']} se {s['when']} pickup, number {digits}. "
+        car = f"{s['car']} {' '.join(s['registration'])}" if s.get("registration") else s["car"]  # spelt out for speech
+        return (f"{s['name']} ji, {car} ki {s['service']}, {s['area']} se {s['when']} pickup, number {digits}. "
                 "Main yeh request bhej doon?")
 
     def _from_website(self) -> str | None:

@@ -40,7 +40,7 @@ def _examples(service: bool, female: bool) -> str:
     """Five lines in the exact voice we want: a service advisor and a car seller do not sound the same."""
     if service:
         lines = [
-            "Haan ji, samajh gayi. Gaadi kaunsi hai aapki?",
+            "Haan ji, samajh gayi. Aapki car ka model aur number kya hai?",
             "Acha, brake se awaaz aa rahi hai? Kab se ho raha hai yeh?",
             "Koi dikkat nahi, pickup free hai. Gurgaon mein kahan se uthwani hai?",
             "Ek second, main check karti hoon.",
