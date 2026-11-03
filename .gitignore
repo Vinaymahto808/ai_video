@@ -41,3 +41,8 @@ Thumbs.db
 
 # third-party bundle captured for recon only
 research/aiva/widget.js
+
+# the AI-rendered expression grid is the puppet source: keep it
+!voice_clone/src/
+voice_clone/src/*
+!voice_clone/src/expressions_grid.png

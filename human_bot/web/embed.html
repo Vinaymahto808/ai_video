@@ -428,21 +428,27 @@
   const pt = (k) => { const v = PUP.pts?.[k]; return !v ? null : Array.isArray(v) ? { x: v[0], y: v[1] } : v; };
   async function puppetInit() {
     const get = (f) => fetch("/avatar_puppet/" + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
-    const [cfg, face, rx] = await Promise.all([get("mouths.json"), get("face.json"), get("reactions.json")]);
+    const [cfg, face, rx, ex] = await Promise.all([get("mouths.json"), get("face.json"), get("reactions.json"), get("expressions.json")]);
     if (!cfg?.shapes) return false;
     const load = (f) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = "/avatar_puppet/" + f; });
     try {
       PUP.base = await load("base.png");
       await Promise.all([...new Set(Object.values(cfg.shapes))].map(async (f) => { PUP.mouths[f] = await load(f); }));
-      // reaction layers (generate_reactions.py): eyes (blink frames, gaze), brows, and the smiling rest mouth.
-      // Optional: without them the puppet falls back to drawn eyelids and the plain rest mouth.
+      try { PUP.mouths["smile.png"] = await load("smile.png"); } catch (e) { /* no smile rest shape */ }
+      // reaction layers (generate_reactions.py): eyes (blink frames, gaze), brows. Optional.
       PUP.layers = {};
       if (rx?.layers) {
         await Promise.all(Object.entries(rx.layers).filter(([, l]) => l.kind !== "pose").map(async ([name, l]) => {
+          if (name === "smile") return;
           try { PUP.layers[name] = await load(l.file.replace(/^.*\//, "")); } catch (e) { /* layer missing: skipped */ }
         }));
-        if (PUP.layers.smile) PUP.mouths["smile.png"] = PUP.layers.smile;
       }
+      // expression layers (expressions_from_grid.py): real renders of the same face — smiles, surprise (whole
+      // face) and glance / eyes closed / wink (eyes only). Optional; the warp layers cover the rest.
+      PUP.expr = {}; PUP.exprMeta = ex?.layers || {}; PUP.moods = ex?.moods || {};
+      await Promise.all(Object.entries(PUP.exprMeta).map(async ([name, l]) => {
+        try { PUP.expr[name] = await load(l.file); } catch (e) { /* skipped */ }
+      }));
     } catch (e) { return false; }
     PUP.cfg = cfg; PUP.pts = face?.points || null;
     PUP.cvs.width = cfg.canvas?.width || PUP.base.naturalWidth; PUP.cvs.height = cfg.canvas?.height || PUP.base.naturalHeight;
@@ -499,38 +505,43 @@
     if (now >= PUP.nextBlink) { PUP.blinkT = now; PUP.nextBlink = now + 1600 + Math.random() * 2600; if (Math.random() < 0.22) PUP.nextBlink = now + 260 + Math.random() * 160; }
     const dt = now - PUP.blinkT;
     const lid = dt >= 0 && dt < 150 && PUP.pts ? Math.round(Math.sin(Math.PI * dt / 150) * BLINK_STEPS) : 0;
-    // eyes: a blink uses the photo's own lids (half -> closed -> half); otherwise the current gaze layer
-    const L = PUP.layers || {};
-    let eyes = null;
-    if (lid && L.eyes_closed) eyes = lid >= BLINK_STEPS * 0.7 ? "eyes_closed" : "eyes_half";
-    else if (!lid && PUP.gaze && L[PUP.gaze]) eyes = PUP.gaze;
+    // Layers, bottom to top: base -> expression (a real render of the same face: smile, surprise; fades over
+    // ~250 ms) -> brows warp (fades) -> eyes (blink frames / glance: instant, as eyes are) -> speech mouth
+    // (instant while she talks; at rest the expression's own mouth shows, or the smile rest shape).
+    const L = PUP.layers || {}, X = PUP.expr || {};
+    const speaking = PUP.mouth !== "X.png";
+    let eyes = null;                               // eyes-region layer name (expression or warp)
+    if (lid) eyes = lid >= BLINK_STEPS * 0.7 ? (X.eyes_closed ? "x:eyes_closed" : L.eyes_closed ? "eyes_closed" : null) : (L.eyes_half ? "eyes_half" : null);
+    else if (PUP.gaze) eyes = X[PUP.gaze] ? "x:" + PUP.gaze : L[PUP.gaze] ? PUP.gaze : null;
     const brows = PUP.brows && L[PUP.brows] ? PUP.brows : null;
-    const mouthFile = PUP.mouth === "X.png" && PUP.restShape && PUP.mouths[PUP.restShape] ? PUP.restShape : PUP.mouth;
-    // Brows and the resting smile fade in/out over ~180 ms (a muscle moves, it does not switch); eyes and
-    // speech shapes switch at once, which is how blinks, glances and lips actually behave.
+    const expr = PUP.exprName && X[PUP.exprName] && PUP.exprMeta[PUP.exprName]?.region === "face" ? PUP.exprName : null;
     const dtF = Math.min(50, now - (PUP.lastDraw || now)); PUP.lastDraw = now;
-    const fade = (PUP.fade ||= { brows: { name: null, a: 0 }, smile: { a: 0 } });
-    if (brows && fade.brows.name !== brows) { fade.brows.name = brows; fade.brows.a = brows ? fade.brows.a : 0; }
-    const step = dtF / 180;
+    const fade = (PUP.fade ||= { brows: { name: null, a: 0 }, smile: { a: 0 }, expr: { name: null, a: 0, prev: null, pa: 0 } });
+    const step = dtF / 180, stepX = dtF / 250;
+    if (brows && fade.brows.name !== brows) fade.brows.name = brows;
     fade.brows.a = Math.max(0, Math.min(1, fade.brows.a + (brows ? step : -step)));
     if (!brows && fade.brows.a === 0) fade.brows.name = null;
-    const smileOn = mouthFile === "smile.png";
-    fade.smile.a = Math.max(0, Math.min(1, fade.smile.a + (smileOn ? step : -step)));
-    const bA = Math.round(fade.brows.a * 20), sA = Math.round(fade.smile.a * 20);
-    const key = (smileOn || fade.smile.a > 0 ? "X.png" : mouthFile) + "|" + (eyes || lid) + "|" + fade.brows.name + bA + "|" + sA + "|" + (smileOn ? "" : mouthFile);
+    if (expr !== fade.expr.name) { fade.expr.prev = fade.expr.name; fade.expr.pa = fade.expr.a; fade.expr.name = expr; fade.expr.a = 0; }
+    if (fade.expr.name) fade.expr.a = Math.min(1, fade.expr.a + stepX);
+    fade.expr.pa = Math.max(0, fade.expr.pa - stepX);
+    const restSmile = !speaking && !expr && PUP.restShape === "smile.png" && PUP.mouths["smile.png"];
+    fade.smile.a = Math.max(0, Math.min(1, fade.smile.a + (restSmile ? step : -step)));
+    const q = (v) => Math.round(v * 20);
+    const key = [PUP.mouth, eyes || lid, fade.brows.name, q(fade.brows.a), fade.expr.name, q(fade.expr.a), fade.expr.prev, q(fade.expr.pa), q(fade.smile.a)].join("|");
     if (key !== PUP.drawn) {
       PUP.drawn = key;
       c.drawImage(PUP.base, 0, 0);
+      if (fade.expr.prev && fade.expr.pa > 0 && X[fade.expr.prev]) { c.globalAlpha = fade.expr.pa; c.drawImage(X[fade.expr.prev], 0, 0); c.globalAlpha = 1; }
+      if (fade.expr.name && fade.expr.a > 0) { c.globalAlpha = fade.expr.a; c.drawImage(X[fade.expr.name], 0, 0); c.globalAlpha = 1; }
       if (fade.brows.name && fade.brows.a > 0) { c.globalAlpha = fade.brows.a; c.drawImage(L[fade.brows.name], 0, 0); c.globalAlpha = 1; }
-      if (eyes) c.drawImage(L[eyes], 0, 0);
-      if (smileOn || (fade.smile.a > 0 && mouthFile === "X.png")) {
-        const rest = PUP.mouths["X.png"]; if (rest) c.drawImage(rest, 0, 0);
-        if (fade.smile.a > 0) { c.globalAlpha = fade.smile.a; c.drawImage(PUP.mouths["smile.png"], 0, 0); c.globalAlpha = 1; }
-      } else {
-        const m = PUP.mouths[mouthFile] || PUP.mouths["X.png"];
+      if (eyes) c.drawImage(eyes.startsWith("x:") ? X[eyes.slice(2)] : L[eyes], 0, 0);
+      if (speaking) {
+        const m = PUP.mouths[PUP.mouth] || PUP.mouths["X.png"];
         if (m) c.drawImage(m, 0, 0);
+      } else if (!expr && fade.smile.a > 0) {
+        c.globalAlpha = fade.smile.a; c.drawImage(PUP.mouths["smile.png"], 0, 0); c.globalAlpha = 1;
       }
-      if (lid && !eyes) drawLids(c, lid / BLINK_STEPS);   // no eye layers: drawn eyelids
+      if (lid && !eyes) drawLids(c, lid / BLINK_STEPS);   // no eye layers at all: drawn eyelids
     }
     requestAnimationFrame(puppetDraw);
   }
@@ -540,22 +551,33 @@
        talking    brows follow the sentence: raised for an enthusiastic line or a question, drawn in for a concern
        warm mood  the resting mouth is the smile frame instead of neutral lips */
   function setReaction(state, emotion, text) {
-    const L = PUP.layers || {};
+    const L = PUP.layers || {}, X = PUP.expr || {}, M = PUP.moods || {};
+    const pick = (...names) => names.find((n) => n && X[n]) || null;
     clearTimeout(PUP.glanceT);
-    if (state === "thinking") { PUP.gaze = "gaze_up"; PUP.brows = L.brows_up ? "brows_up" : null; }
-    else if (state === "listening" || state === "idle") {
+    const question = /\?\s*$/.test(text || "");
+    if (state === "thinking") {
+      PUP.gaze = X.glance ? "glance" : "gaze_up"; PUP.brows = L.brows_up ? "brows_up" : null; PUP.exprName = null;
+    } else if (state === "listening" || state === "idle") {
       PUP.gaze = null; PUP.brows = null;
-      const glance = () => {                       // a 500 ms look aside every 4-8 s while listening
+      PUP.exprName = pick(M.listening, "smile_soft");
+      const glance = () => {                       // a short look aside every 4-8 s while listening (people do not stare)
         if (!PUP.on || (AV.state !== "listening" && AV.state !== "idle")) return;
-        PUP.gaze = Math.random() < 0.5 ? "gaze_left" : "gaze_right";
+        PUP.gaze = X.glance ? "glance" : (Math.random() < 0.5 ? "gaze_left" : "gaze_right");
         setTimeout(() => { if (PUP.gaze !== "gaze_up") PUP.gaze = null; }, 450 + Math.random() * 250);
         PUP.glanceT = setTimeout(glance, 4000 + Math.random() * 4000);
       };
       PUP.glanceT = setTimeout(glance, 2500 + Math.random() * 3000);
+    } else if (state === "greeting") {
+      PUP.gaze = null; PUP.brows = null; PUP.exprName = pick(M.greeting, "smile_warm");
+    } else if (state === "backchannel") {
+      PUP.gaze = null; PUP.exprName = pick(M.backchannel, "smile_soft");
     } else if (state === "talking") {
       PUP.gaze = null;
-      const q = /\?\s*$/.test(text || "");
-      PUP.brows = emotion === "concerned" ? "brows_in" : (emotion === "enthusiastic" || q) ? "brows_up" : null;
+      // the sentence's emotion picks the face; a question gets the surprised brows, a concern draws them in
+      PUP.exprName = emotion === "enthusiastic" ? pick(M.enthusiastic, "smile_big")
+        : emotion === "warm" ? pick(M.warm, "smile_warm")
+        : question ? pick(M.question, "surprised") : null;
+      PUP.brows = emotion === "concerned" ? (L.brows_in ? "brows_in" : null) : (question && !PUP.exprName && L.brows_up) ? "brows_up" : null;
     }
     if (emotion) PUP.mood = emotion;
     PUP.restShape = (PUP.mood === "warm" || PUP.mood === "enthusiastic") && PUP.mouths["smile.png"] ? "smile.png" : "X.png";

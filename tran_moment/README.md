@@ -38,3 +38,21 @@ lean_in). The card's puppet (`web/embed.html` setReaction/puppetDraw) composes b
 thinking = gaze up + brows up; listening = glances aside every 4-8 s; a question or an enthusiastic line raises
 the brows, a concerned line draws them in; a warm mood rests on the smile. Review all frames in
 `path_b/reactions_sheet.png`. Re-run after every portrait change (after generate_mouths.py).
+
+## Expression grid (2026-11-03): the preferred source
+
+One rendered image with 12 expressions of the same person (6 x 2 cells: neutral, soft smile, big smile,
+"ah", talking E, surprised, "oh", talking I, glance aside, warm smile, eyes closed, wink), e.g.
+`voice_clone/src/expressions_grid.png`:
+
+```
+python tran_moment/path_b/expressions_from_grid.py --grid voice_clone/src/expressions_grid.png
+python tran_moment/path_b/generate_reactions.py      # brows_up/in + eyes_half warps on the new base
+python tran_moment/path_b/expressions_from_grid.py --grid voice_clone/src/expressions_grid.png   # again: restores the grid smile.png
+```
+Cell 0 becomes the base portrait; every other cell is aligned on six landmarks and colour-matched to it. The
+talking cells become the speech mouth shapes (real lips, not warps); smiles/surprise become whole-face layers
+and glance/eyes-closed/wink eyes-only layers (`path_b/expressions/`, `expressions.json`, review sheet
+`expressions_sheet.png`). The card fades expressions over 250 ms (`setReaction` in web/embed.html): warm ->
+smile_warm, enthusiastic -> smile_big, question -> surprised, listening -> soft smile + glances, thinking ->
+glance. For a sharper result generate the grid at a higher resolution (cells are 296x444 here, upscaled 2.2x).

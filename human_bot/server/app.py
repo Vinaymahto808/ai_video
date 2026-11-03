@@ -743,12 +743,13 @@ class Handler(BaseHTTPRequestHandler):
             base = HERE.parents[1] / "tran_moment"
             if name == "face.json":
                 f = base / "prepared" / "face.json"
-            elif name in ("mouths.json", "reactions.json"):
+            elif name in ("mouths.json", "reactions.json", "expressions.json"):
                 f = base / "path_b" / name
-            else:  # mouth shapes first, then the reaction layers (eyes, brows, poses)
-                f = base / "path_b" / "mouths" / name
-                if not f.is_file():
-                    f = base / "path_b" / "reactions" / name
+            else:  # mouth shapes first, then expression layers (from the grid), then the warp reaction layers
+                for sub in ("mouths", "expressions", "reactions"):
+                    f = base / "path_b" / sub / name
+                    if f.is_file():
+                        break
             if not f.is_file():
                 return self._json(404, {"error": "no such asset"})
             body = f.read_bytes()

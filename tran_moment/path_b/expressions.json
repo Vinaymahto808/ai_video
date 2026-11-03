@@ -1,0 +1,48 @@
+{
+ "canvas": {
+  "width": 640,
+  "height": 852
+ },
+ "layers": {
+  "smile_soft": {
+   "file": "smile_soft.png",
+   "region": "face"
+  },
+  "smile_big": {
+   "file": "smile_big.png",
+   "region": "face"
+  },
+  "surprised": {
+   "file": "surprised.png",
+   "region": "face"
+  },
+  "smile_warm": {
+   "file": "smile_warm.png",
+   "region": "face"
+  },
+  "glance": {
+   "file": "glance.png",
+   "region": "eyes"
+  },
+  "eyes_closed": {
+   "file": "eyes_closed.png",
+   "region": "eyes"
+  },
+  "wink": {
+   "file": "wink.png",
+   "region": "eyes"
+  }
+ },
+ "moods": {
+  "warm": "smile_warm",
+  "enthusiastic": "smile_big",
+  "neutral": null,
+  "thinking": null,
+  "concerned": null,
+  "backchannel": "smile_soft",
+  "greeting": "smile_warm",
+  "listening": "smile_soft",
+  "question": "surprised"
+ },
+ "note": "face layers composite over base.png under the speech mouth; eyes layers are used for glances/blinks"
+}
