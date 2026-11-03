@@ -46,3 +46,6 @@ research/aiva/widget.js
 !voice_clone/src/
 voice_clone/src/*
 !voice_clone/src/expressions_grid.png
+
+# Vercel CLI project link (ids only, machine-local)
+.vercel/

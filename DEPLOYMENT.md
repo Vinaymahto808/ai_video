@@ -93,6 +93,12 @@ HTTP/1.1 with keep-alive, and answers `Range` requests for cached clips (iOS pro
 ## 6. Widget hosting
 
 - Ship `avatar_widget/loader.js`, `panel.html` and `src/` on the widget origin (CDN or the bot host).
+  **Live on Vercel since 2026-11-03:** `https://avatarwidget-five.vercel.app` (project `avatar_widget`, static, `vercel.json`
+  sets CORS + cache headers, `.vercelignore` keeps evidence/tests out). Redeploy: `cd avatar_widget && vercel deploy --prod --yes`.
+  The bot itself cannot run on Vercel (long-lived SSE server, in-memory sessions, SQLite, local embedding model):
+  it stays on a VPS behind Caddy (section 1); the embed tag points at it with `data-api`:
+  `<script src="https://avatarwidget-five.vercel.app/loader.js" data-api="https://BOT-HOST" data-persona="auto-car-repair" defer></script>`
+  Demo: `https://avatarwidget-five.vercel.app/?api=https://BOT-HOST` (the bot's `HUMAN_BOT_ALLOWED_ORIGINS` must include the Vercel origin).
   `data-api="https://bot.example.in"` is required when the loader is not served from the bot origin.
 - The loader appends `?v=<VERSION>` to the panel URL (see `avatar_widget/loader.js`); bump `VERSION` on
   every release so CDN caches never mix old and new modules.
