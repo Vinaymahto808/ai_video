@@ -37,7 +37,7 @@ export const settings = {
     // local CPU model for the low-latency query path (see embed/local.js); "" disables it
     // "none" / "off" / "" disable it (a 512 MB host cannot hold the model: Render free OOM-killed at 535 MB);
     // Render's API refuses an empty env value, hence the words
-    localModel: /^(none|off|0|false)?$/i.test(env("KB_LOCAL_MODEL", "Xenova/multilingual-e5-small").trim()) ? "" : env("KB_LOCAL_MODEL", "").trim(),
+    localModel: (() => { const v = env("KB_LOCAL_MODEL", "Xenova/multilingual-e5-small").trim(); return /^(none|off|0|false)?$/i.test(v) ? "" : v; })(),
   },
   chunk: {
     size: int("KB_CHUNK_SIZE", 1200),
