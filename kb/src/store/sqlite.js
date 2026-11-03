@@ -109,7 +109,8 @@ export class KnowledgeStore {
       listPages: d.prepare(`SELECT id,url,title,page_type,status,http_status,content_hash,chunk_count,last_crawled_at,last_changed_at,error FROM pages WHERE website_id=? AND (?='' OR status=?) ORDER BY id LIMIT ? OFFSET ?`),
       countPages: d.prepare(`SELECT status, COUNT(*) n FROM pages WHERE website_id=? GROUP BY status`),
       countChunks: d.prepare(`SELECT COUNT(*) n FROM chunks WHERE website_id=?`),
-      activeNotSeen: d.prepare(`SELECT id,url FROM pages WHERE website_id=? AND status='active' AND (last_seen_job IS NULL OR last_seen_job<>?)`),
+      // page_type 'qa' (src/ingest_qa.js, customer-call knowledge) is not crawled, so a crawl never retires it
+      activeNotSeen: d.prepare(`SELECT id,url FROM pages WHERE website_id=? AND status='active' AND COALESCE(page_type,'')<>'qa' AND (last_seen_job IS NULL OR last_seen_job<>?)`),
       countActive: d.prepare(`SELECT COUNT(*) n FROM pages WHERE website_id=? AND status='active'`),
       setInactive: d.prepare(`UPDATE pages SET status='inactive' WHERE id=?`),
       insertJob: d.prepare(`INSERT INTO crawl_jobs(website_id,mode,status,started_at) VALUES(?,?,?,?)`),

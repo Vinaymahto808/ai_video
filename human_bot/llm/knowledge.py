@@ -61,7 +61,9 @@ def knowledge_block(hits: list[dict], website_name: str, max_chars: int = 3500) 
     used = 0
     for i, h in enumerate(hits, 1):
         text = " ".join((h.get("text") or "").split())
-        entry = f"[{i}] {h.get('title') or ''} — {h.get('url') or ''}\n{text}"
+        tag = (" (customer-call notes: what our team actually told callers; 'Call note' is the raw note)"
+               if (h.get("page_type") or "") == "qa" else "")
+        entry = f"[{i}] {h.get('title') or ''} — {h.get('url') or ''}{tag}\n{text}"
         if used + len(entry) > max_chars:
             entry = entry[: max(0, max_chars - used)]
         if not entry.strip():

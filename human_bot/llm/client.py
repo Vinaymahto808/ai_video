@@ -429,6 +429,10 @@ class OfflineServiceBrain(OfflineBrain):
             words = " ".join((h.get("text") or "").split()).split(" ")
             if len(words) < 4:
                 continue
+            if (h.get("page_type") or "") == "qa":
+                # customer-call knowledge (kb/src/ingest_qa.js): the first line is already Neha's own answer
+                first = (h.get("text") or "").split("\n", 1)[0].strip()
+                return first if first.endswith((".", "!", "?")) else first + "."
             snippet = " ".join(words[:38]).rstrip(",;:-")
             if not snippet.endswith((".", "!", "?")):
                 snippet += "."

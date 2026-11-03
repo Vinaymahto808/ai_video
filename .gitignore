@@ -54,3 +54,10 @@ voice_clone/src/*
 
 .vercel
 .env*
+# kb/tools: the Q&A cleaning scripts (not the root tools/ with binaries and venvs)
+!kb/tools/
+# customer-call Q&A: internal business data, never in the public repo (kept on the machine / the host)
+kb/seed/acr_customer_qa*.csv
+kb/seed/qa_rewrites.json
+kb/seed/QA_REVIEW.md
+tran_moment/prepared/acr_customer_qa*.csv
