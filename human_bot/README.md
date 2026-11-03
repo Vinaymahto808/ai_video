@@ -98,6 +98,10 @@ python human_bot\server\app.py --port 4003 --persona auto-car-repair   # Neha ·
 | 5 | Numbers spoken ("16.46 lakh rupees") | `spoken_numbers` | `pct_written_money` |
 | 6 | Agent talks less than the customer | prompt + talk-ratio score | `talk_ratio_agent` |
 | 7 | Pauses masked, never dead air | prompt rule 6 | transcript |
+| 8 | Tailors examples to the customer type (new / existing / claim / fleet / breakdown; first-car / exchange / family / corporate / ready) | persona `conversation.visitor_types` -> "Who is on the call" block | transcript |
+| 9 | Follows a 6-step call flow, captures name / area / phone (phone only for a call-back, pickup or test drive) / time, reads them back once before booking | persona `sales.flow`, `sales.capture_fields`, `sales.confirm_line` | `lead` fields in `/conversations` |
+| 10 | Never invents prices, offers, dates, capabilities; out-of-scope and competitor lines; fallback line when the team is unavailable | persona `guardrails.never_invent`, `out_of_scope_line`, `competitors`, `handoff_unavailable_line` | transcript |
+| 11 | Longer answer (up to `max_words_detail`, 70) only when the customer asks for detail | `humanizer.wants_detail()` + prompt rule 1 | `pct_over_budget` |
 | 8 | Backchannels while user speaks | `pick_backchannel` → SSE | `backchannels` counter |
 | 9 | Stops instantly on interruption | generation counter in `_chat` | `interrupted` event |
 | 10 | Face reacts (emotion → gesture) | `emotion_of` → SSE `gesture` | `emotion` tag |
@@ -289,3 +293,14 @@ clips are cached per text+emotion.
 take each time, never the same one twice in a row, on top of the per-gesture amplitude/timing variation,
 cooldown and dt-based smoothing. The artist read-script for a cloned voice is in
 `voice_clone/scripts/neha_read_script.md` (needs consent and a dry recording; see that file).
+
+## Service request on the call (2026-11-03)
+
+`crm/service_request.py` collects the facts from the customer's words (name, phone, car, problem, area,
+registration, time, pickup), tells the model what is still missing (one question at a time, never invent),
+and detects the read-back question "Main yeh request bhej doon?" and the customer's yes. On yes the server
+calls `crm/acr_leads.py` (the website's own `/api/v1/leads` endpoint; `ACR_LEADS_MODE=dry` by default) and
+speaks the backend's reference, or an honest "could not send, the team will call". The offline script asks
+the same questions and reads the request back, so the flow works even with no live model. Record:
+`analysis.service_request` + `next_step = service_request:<lead_id|queued>` in the conversation store, and
+the CRM outbox. Tests: `python human_bot/tests/test_service_request.py`.

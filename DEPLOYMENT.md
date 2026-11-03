@@ -38,6 +38,7 @@ came out of it. Items marked **open** are not done and need a decision or an acc
 | `BITRIX24_LEAD_STATUS` / `BITRIX24_ASSIGNED_BY` | `NEW` / user id | Funnel stage for new leads and (optional) the advisor to assign. |
 | `HUMAN_BOT_PUBLIC_URL` | `https://bot.example.in` | Used to put a recording link into the lead comment. |
 | `HUMAN_BOT_LLM_TIMEOUT_S` | `8` | Per-request socket deadline for an LLM provider before the next one is tried. |
+| `HUMAN_BOT_AVATAR_PROVIDER` | `simli` | **Production default (2026-11-03).** `/health` reports `avatar.ready`, the widget opens the Simli WebRTC face and streams our TTS audio into it; if the stream cannot start (key, quota, WebRTC blocked) the widget falls back to the 2D puppet by itself. `did` = D-ID (untested lately), unset = puppet only. |
 | `SIMLI_API_KEY`, `SIMLI_FACE_ID` | as issued | The server picks the face; clients can no longer choose one. |
 
 Built-in limits now enforced: JSON bodies 64 KB (413), `/stt` audio 8 MB, `/tts` text 600 chars, sessions
@@ -123,3 +124,20 @@ HTTP/1.1 with keep-alive, and answers `Range` requests for cached clips (iOS pro
   transcript (P2 in the server audit).
 - Local query embeddings (would cut the 0.7 to 1.2 s knowledge lookup; needs a full re-embed).
 - Real-device test matrix (see checklist).
+
+## Service requests filed by the bot (2026-11-03)
+
+Neha collects name, phone, car, problem and area (one question at a time), reads the request back, and on the
+customer's "haan" the **server** submits it to the website backend, the same endpoint the Contact form uses
+(`POST https://autocarrepair.in/api/v1/leads`, multipart, returns `lead_id`). The model never claims a
+submission; the spoken result comes from the backend's answer.
+
+| Variable | Production value | Why |
+|---|---|---|
+| `ACR_LEADS_MODE` | `live` (default `dry`) | `dry` = nothing is sent, the request is kept in the conversation record / CRM outbox and Neha says the team will call (no number invented). Switch to `live` after the website developer confirms the field names and allows the bot's server. |
+| `ACR_LEADS_URL` | `https://autocarrepair.in/api/v1/leads` | The site's lead endpoint. |
+| `ACR_LEADS_KEY` | if the developer issues one | Sent as `X-Api-Key`. |
+| `ACR_LEADS_SOURCE` | `neha_bot` | `source` field, so bot leads are distinguishable in the backend/CRM. |
+
+Fields sent: `name, phone, location, service (site category slug), source, message, custom_data[make|model|registration|conversation_id]`
+(see `human_bot/crm/acr_leads.py`). `/health` (loopback) shows `leads.mode` and the number of dry runs.

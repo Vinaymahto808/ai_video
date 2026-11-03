@@ -56,6 +56,8 @@ from llm.knowledge import knowledge_block, retrieve  # noqa: E402
 from memory.store import ConversationStore  # noqa: E402
 from crm.outbox import Outbox  # noqa: E402
 from crm.bitrix24 import sink_from_env as bitrix_sink_from_env  # noqa: E402
+from crm import acr_leads  # noqa: E402
+from crm.service_request import asked_confirmation, collect as sr_collect, is_no as sr_is_no, is_yes as sr_is_yes, missing as sr_missing, prompt_block as sr_prompt_block, summary_line as sr_summary, wants_request as sr_wants  # noqa: E402
 from llm.knowledge import status as kb_status  # noqa: E402
 from llm import did_avatar, simli_avatar  # noqa: E402
 
@@ -146,6 +148,9 @@ class Session:
         self.pending_audio: str | None = None
         self.analysis: dict | None = None
         self.save_lock = threading.Lock()
+        # service request (crm/service_request.py): has Neha asked "bhej doon?", and what was filed
+        self.sr_pending = False
+        self.service_request: dict | None = None
 
     def messages(self, extra: str = "") -> list[dict]:
         ctx = json.dumps(self.context, ensure_ascii=False) if self.context else "{}"
@@ -399,6 +404,9 @@ def _persist(s: Session, ended: bool) -> None:
                     t["audio"] = names
                     s.audio_files += [n for n in names if n not in s.audio_files]
         rec = STORE.record(s, ended=ended)
+        if s.service_request:  # what was filed with the workshop (dry/queued or the live lead id)
+            rec["analysis"] = {**(rec.get("analysis") or {}), "service_request": s.service_request}
+            rec["next_step"] = "service_request:" + (s.service_request.get("lead_id") or s.service_request.get("status", ""))
         STORE.save(rec)
         if ended and OUTBOX and rec.get("turns"):
             OUTBOX.enqueue(rec)  # CRM push happens in the worker, never on the customer's request path
@@ -712,6 +720,7 @@ class Handler(BaseHTTPRequestHandler):
                     "tts": tts_status(), "tts_error": TTS_LAST.get("error"), "stt": stt_status(),
                     "kb": kb_status(), "avatar": avatar_status(),
                     "crm": OUTBOX.status() if OUTBOX else {"sink": None, "note": "recording off"},
+                    "leads": {"mode": acr_leads.mode(), "url": acr_leads.LEADS_URL, "dry_runs": len(acr_leads.LOG)},
                 })
             return self._json(200 if body["ok"] else 503, body)
         if path == "/conversations" or path.startswith("/conversations/"):
@@ -1151,6 +1160,27 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     # ------------------------------------------------------------------ chat
+    def _file_service_request(self, s: Session, slots: dict) -> str:
+        """Submit the collected request (dry or live) and return exactly what Neha says about it.
+        Never a made-up reference: a number is spoken only when the backend returned one."""
+        page = ((s.context or {}).get("page") or {}).get("url", "")
+        try:
+            res = acr_leads.submit(slots, s.id, page)
+        except acr_leads.LeadError as ex:
+            sys.stderr.write(f"[leads] submit failed for {s.id}: {ex}\n")
+            s.service_request = {"status": "failed", "error": str(ex)[:200], "slots": slots, "t": time.time()}
+            s.sr_pending = False
+            return "Maaf kijiye, abhi request system mein nahi ja paayi. Main team se aapko call karwa deti hoon, aapka number note hai."
+        s.service_request = {"status": "sent" if res["sent"] else "queued", "lead_id": res.get("lead_id"), "mode": res["mode"], "slots": slots, "t": time.time()}
+        s.sr_pending = False
+        phone = slots.get("phone", "")
+        digits = " ".join(phone) if phone else ""
+        if res.get("lead_id"):
+            return (f"Done ji. Aapki request number {res['lead_id']} hai, note kar lijiye. "
+                    f"{sr_summary(slots)}. Team aapko {digits} par jaldi call karegi.")
+        return (f"Done ji. Aapki request note ho gayi: {sr_summary(slots)}. "
+                f"Team aapko {digits} par jaldi call karegi.")
+
     def _chat(self, body: dict) -> None:
         sid = body.get("session_id")
         s = get_session(sid) if isinstance(sid, str) else None
@@ -1193,7 +1223,19 @@ class Handler(BaseHTTPRequestHandler):
                     for h in hits
                 ]})
             s.brain.context = hits  # offline script quotes the website passages instead of guessing
-            for token in stream_reply(s.messages(extra=kb_extra), fallback=s.brain):
+            # Service request: the server collects the facts from the customer's words, tells the model what
+            # is still missing, and files the request itself once the customer has said yes to the read-back.
+            source = None
+            service = (persona.get("business_type") or "sales") == "service"
+            if service and not s.service_request:
+                slots = sr_collect(s.transcript)
+                if s.sr_pending and sr_is_no(user_text):
+                    s.sr_pending = False
+                if s.sr_pending and not sr_missing(slots) and sr_is_yes(user_text):
+                    source = iter([self._file_service_request(s, slots)])
+                elif sr_wants(s.transcript, slots):
+                    kb_extra = (kb_extra + "\n\n" if kb_extra else "") + sr_prompt_block(slots, s.sr_pending)
+            for token in (source if source is not None else stream_reply(s.messages(extra=kb_extra), fallback=s.brain)):
                 if s.generation != my_gen:  # barge-in: a newer turn superseded us
                     self._sse("interrupted", {"generation": my_gen})
                     return
@@ -1229,6 +1271,8 @@ class Handler(BaseHTTPRequestHandler):
                 prefetch_tts([tail], emotion=emo)
 
             full = " ".join(spoken).strip()
+            if source is None and not s.service_request:
+                s.sr_pending = asked_confirmation(full)  # the model just read the request back and asked "bhej doon?"
             if not full:  # model produced nothing usable: answer from the persona rules
                 full = humanize(s.brain.reply(user_text), max_words=max_words, language=s.language, female=female)
             if not full:

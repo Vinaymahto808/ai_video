@@ -259,12 +259,14 @@ class OfflineBrain:
                 self.slots["model"] = model
 
     def stream(self, messages: list[dict]) -> Iterator[str]:
-        user = ""
-        for m in reversed(messages):
-            if m["role"] == "user":
-                user = m["content"]
-                break
-        yield self.reply(user)
+        # Earlier user turns were answered by the live model while this script was idle: read their facts
+        # (car, area, phone, name...) before replying, so a fallback mid-conversation does not re-ask them.
+        users = [m["content"] for m in messages if m["role"] == "user"]
+        seen = getattr(self, "_seen_turns", 0)
+        for text in users[seen:-1]:
+            self._remember(text)
+        self._seen_turns = len(users)
+        yield self.reply(users[-1] if users else "")
 
     def reply(self, user: str) -> str:
         self._remember(user)
@@ -381,6 +383,16 @@ class OfflineServiceBrain(OfflineBrain):
         m = re.search(r"\b(aaj|today|abhi|kal|tomorrow|weekend|saturday|sunday|monday|tuesday|wednesday|thursday|friday|parso)\b", t)
         if m:
             self.slots["when"] = m.group(1)
+        # name and phone: the same patterns the server's service-request collector uses
+        from crm.service_request import NAME_RE, NAME_STOP, PHONE_RE  # noqa: PLC0415
+        m = PHONE_RE.search(text)
+        if m:
+            self.slots["phone"] = m.group(1)
+        m = NAME_RE.search(text)
+        if m:
+            words = [w for w in m.group(1).split() if w.lower() not in NAME_STOP]
+            if words:
+                self.slots["name"] = " ".join(words).title()
 
     def _next_question(self) -> str:
         s = self.slots
@@ -390,12 +402,18 @@ class OfflineServiceBrain(OfflineBrain):
             return "Gaadi mein kya problem hai, ya kaunsi service karwani hai?"
         if not s.get("area"):
             return f"Aap kis area mein hain, {', '.join(self.areas[:-1])} ya {self.areas[-1]}?"
+        if not s.get("name"):
+            return "Aapka naam kya hai?"
+        if not s.get("phone"):
+            return "Aapka mobile number bata dijiye, team usi par call karegi."
         if not s.get("when"):
             self.offered = True
             return "Kab convenient rahega, aaj ya kal? Free pickup arrange kar deti hoon."
+        # everything known: read it back and ask for the go-ahead (the server files the request on "haan")
         self.offered = True
-        return (f"Perfect. {s['car']} ki {s['service']}, {s['area']} se {s['when']} pickup. "
-                "Team call karke time confirm karegi. Koi aur help?")
+        digits = " ".join(s["phone"])
+        return (f"{s['name']} ji, {s['car']} ki {s['service']}, {s['area']} se {s['when']} pickup, number {digits}. "
+                "Main yeh request bhej doon?")
 
     def _from_website(self) -> str | None:
         """First retrieved passage, trimmed to a spoken length; None when nothing was retrieved."""
@@ -411,7 +429,9 @@ class OfflineServiceBrain(OfflineBrain):
 
     # -- turn -----------------------------------------------------------------------
     def reply(self, user: str) -> str:
+        before = dict(self.slots)
         self._remember(user)
+        new = [k for k in self.slots if before.get(k) != self.slots.get(k)]  # facts this turn added
         t = " " + user.lower().strip() + " "
 
         if not t.strip() or re.search(r"\b(hi|hello|namaste|namaskar|hey)\b", t):
@@ -457,6 +477,9 @@ class OfflineServiceBrain(OfflineBrain):
         if self.slots.get("when") and re.search(r"\b(aaj|today|abhi|kal|tomorrow|weekend|parso)\b", t):
             return self._next_question()
 
+        if new:  # the customer answered the question (name, number, time...): acknowledge, move on
+            ack = "Number note kar liya. " if "phone" in new else "Theek hai ji. "
+            return ack + self._next_question()
         # Nothing recognised (noise, a mis-heard word): say so, then ask the next discovery question.
         return "Maaf kijiye, main theek se samajh nahi paayi. " + self._next_question()
 
