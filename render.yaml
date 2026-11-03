@@ -21,8 +21,11 @@ services:
         value: 3.12.6
       - key: HUMAN_BOT_BEHIND_PROXY
         value: "1"
+      # "1": the bot's own URL shows autocarrepair.in with the Neha launcher injected, exactly like
+      # http://127.0.0.1:4001 on the laptop (demo/preview). For customers the dealer site carries the
+      # one-line script tag instead; set this to "0" then.
       - key: HUMAN_BOT_SITE_MIRROR
-        value: "0"
+        value: "1"
       - key: HUMAN_BOT_ALLOWED_ORIGINS
         value: https://autocarrepair.in,https://www.autocarrepair.in,https://YOUR-VERCEL-SITE.vercel.app
       - key: HUMAN_BOT_AVATAR_PROVIDER
