@@ -23,6 +23,5 @@
       "source": "/(demo.html|index.html)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
-  ],
-  "rewrites": [{ "source": "/", "destination": "/demo.html" }]
+  ]
 }

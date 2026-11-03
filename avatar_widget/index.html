@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>avatar_widget demo — a fake dealer page</title>
+<style>
+  body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: #222; }
+  header { background: #0b2f6b; color: #fff; padding: 18px 28px; font-weight: 700; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 160px; }
+  .card { border: 1px solid #e3e6ee; border-radius: 14px; padding: 18px; margin: 14px 0; }
+  code { background: #f2f4f8; padding: 2px 6px; border-radius: 6px; }
+  #log { font: 12px/1.5 ui-monospace, monospace; background: #0e1116; color: #c8d0e0; padding: 12px; border-radius: 10px; min-height: 80px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<header>Auto Car Repair · Periodic Service</header>
+<main>
+  <h1>Periodic Service — Hyundai Creta</h1>
+  <p>This page stands in for a dealer/workshop site. The floating launcher bottom-right comes from one script tag;
+     everything inside the panel runs in an iframe served from this folder and talks to human_bot
+     (<code>?api=</code> below, default <code>http://127.0.0.1:4001</code>).</p>
+  <div class="card">
+    <button onclick="AvatarWidget.open()">Talk to a consultant</button>
+    <button onclick="AvatarWidget.close()">Close</button>
+  </div>
+  <div class="card"><b>Bridge events</b><div id="log"></div></div>
+</main>
+<script>
+  // dev convenience: ?api=http://127.0.0.1:4002 switches the bot origin; ?ws=ws://127.0.0.1:4101
+  // routes session/chat through tools/ws-shim.mjs instead of SSE. The persona comes from data-persona.
+  var q = new URLSearchParams(location.search);
+  var api = q.get("api") || localStorage.getItem("neha_api_base") || "http://127.0.0.1:4001";
+  var s = document.createElement("script");
+  s.src = new URL("loader.js", location.href).href;   // next to this page: works at :4300 (root) and under /avatar_widget/ on a static host
+  s.setAttribute("data-api", api);
+  s.setAttribute("data-persona", q.get("persona") || "auto-car-repair");
+  s.setAttribute("data-label", "Talk to Neha");
+  ["ws", "voice", "lang"].forEach(function (k) { if (q.get(k)) s.setAttribute("data-" + k, q.get(k)); });
+  s.defer = true;
+  s.onload = function () {
+    var log = document.getElementById("log");
+    ["open", "close", "ready", "state", "lead", "error"].forEach(function (t) {
+      AvatarWidget.on(t, function (d) { log.textContent += t + " " + (d === undefined ? "" : JSON.stringify(d)) + "\n"; });
+    });
+  };
+  document.body.appendChild(s);
+</script>
+</body>
+</html>

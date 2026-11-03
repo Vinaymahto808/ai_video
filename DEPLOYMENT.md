@@ -94,7 +94,11 @@ HTTP/1.1 with keep-alive, and answers `Range` requests for cached clips (iOS pro
 
 - Ship `avatar_widget/loader.js`, `panel.html` and `src/` on the widget origin (CDN or the bot host).
   **Live on Vercel since 2026-11-03:** `https://avatarwidget-five.vercel.app` (project `avatar_widget`, static, `vercel.json`
-  sets CORS + cache headers, `.vercelignore` keeps evidence/tests out). Redeploy: `cd avatar_widget && vercel deploy --prod --yes`.
+  sets CORS + cache headers). The Vercel project's **Root Directory is `avatar_widget`** (set with
+  `vercel project update avatar_widget --root-directory avatar_widget --yes`), the repo root is linked (`.vercel/`), and the
+  root `.vercelignore` uploads only that folder. **Redeploy from the repo root:** `vercel deploy --prod --yes`
+  (running it inside `avatar_widget/` fails with "path avatar_widget/avatar_widget does not exist"). A git push
+  to `main` also deploys through the Vercel git integration with the same root.
   The bot itself cannot run on Vercel (long-lived SSE server, in-memory sessions, SQLite, local embedding model):
   it stays on a VPS behind Caddy (section 1); the embed tag points at it with `data-api`:
   `<script src="https://avatarwidget-five.vercel.app/loader.js" data-api="https://BOT-HOST" data-persona="auto-car-repair" defer></script>`

@@ -1,0 +1,9 @@
+# Vercel project "avatar_widget" has Root Directory = avatar_widget. Deploy with `vercel deploy --prod --yes`
+# from the repo root; only the widget folder is uploaded (bot, kb, clips, recordings and secrets stay out).
+/*
+!/avatar_widget
+/avatar_widget/evidence
+/avatar_widget/test
+/avatar_widget/__pycache__
+/avatar_widget/serve.py
+/avatar_widget/README.md

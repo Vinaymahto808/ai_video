@@ -49,3 +49,6 @@ voice_clone/src/*
 
 # Vercel CLI project link (ids only, machine-local)
 .vercel/
+
+.vercel
+.env*
