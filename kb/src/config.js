@@ -35,7 +35,9 @@ export const settings = {
     maxRetries: int("KB_EMBED_RETRIES", 6),
     apiKey: env("GEMINI_API_KEY", env("gemini_api_key", "")),
     // local CPU model for the low-latency query path (see embed/local.js); "" disables it
-    localModel: env("KB_LOCAL_MODEL", "Xenova/multilingual-e5-small"),
+    // "none" / "off" / "" disable it (a 512 MB host cannot hold the model: Render free OOM-killed at 535 MB);
+    // Render's API refuses an empty env value, hence the words
+    localModel: /^(none|off|0|false)?$/i.test(env("KB_LOCAL_MODEL", "Xenova/multilingual-e5-small").trim()) ? "" : env("KB_LOCAL_MODEL", "").trim(),
   },
   chunk: {
     size: int("KB_CHUNK_SIZE", 1200),

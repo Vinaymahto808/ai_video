@@ -958,7 +958,9 @@ class Handler(BaseHTTPRequestHandler):
             # (ETag -> 304, no body) so a reload always shows the current card. Media stays cacheable,
             # except the portrait itself, which must follow a rebuild immediately.
             if text or path == "/avatar.jpg":
-                if self.headers.get("If-None-Match") == etag:
+                # weak compare: a proxy (Render) turns our ETag into W/"..." and the browser echoes that form
+                inm = [t.strip().removeprefix("W/") for t in (self.headers.get("If-None-Match") or "").split(",")]
+                if etag in inm:
                     self.send_response(304)
                     self.send_header("ETag", etag)
                     self.send_header("Cache-Control", "no-cache, must-revalidate")
