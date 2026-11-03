@@ -194,3 +194,52 @@ Still the biggest levers, in order (decisions, not code):
 2. Azure Speech for TTS with a persistent connection: first audio 1.0-2.2 s -> ~0.3 s.
 3. Streaming ASR (partial transcripts) so retrieval and the model start before the customer stops talking.
 4. Merge `/stt` + `/chat` into one `/turn` request (one round trip less on mobile).
+
+## Capacity and latency (measured 2026-11-03, hosted pair on Render free, probe from Delhi)
+
+`python human_bot/tools/latency_probe.py <bot-url> <kb-url> 3,6,10` runs one full conversation with
+per-step timings, then N conversations in parallel (session + two chat turns each) and prints p50/p95.
+
+| Step (one warm conversation) | Hosted (free) | Laptop |
+|---|---|---|
+| card HTML (gzip, 31 KB on the wire) | 340-370 ms | 10 ms |
+| kb search, server side (gemini vector + FTS; cached query) | 80-950 ms | 40-190 ms (hybrid-local) |
+| /session | 390-610 ms | 28 ms |
+| /chat first token | 325-620 ms | 3-50 ms |
+| /tts first byte (Edge, Swara) | 300-400 ms | 14 ms |
+
+Roughly 300 ms of every hosted number is the Delhi -> Singapore round trip through Render's proxy;
+the server itself spends 30-80 ms per turn on the laptop.
+
+| Parallel conversations | Hosted free, before | Hosted free, after this pass | Laptop |
+|---|---|---|---|
+| 3 | reply p50 1.1 s | reply p50 0.4 s, p95 0.6 s | 0.17 s |
+| 6 | reply p50 3.9 s | reply p50 2.1 s, p95 2.5 s | 0.2 s |
+| 10 | 5 of 10 got 502, p50 12 s | 6 of 10 got 502, p50 8.8 s | 0.17 s, p95 0.55 s |
+| 20 | - | - | 0.5 s, p95 1.6 s |
+
+What the pass changed: bot -> kb over Render's private network instead of the public HTTPS proxy
+(`KB_URL=http://neha-kb:10000`); the card paints the face before the 2 MB of reaction frames arrive
+(frames stream in, greeting smile and blink first); gzip + ETag/304 for the card's text assets;
+`/health` no longer 503s when the LLM keys are rate-limited (that restarted the instance mid-call);
+per-provider LLM timeout 4 s; the local embedding model stays off on the free kb (it needs ~550 MB).
+
+The ceiling is the free instance: 0.1 vCPU, 512 MB, sleeps after 15 min, one instance. Six
+simultaneous conversations are fine; ten saturate the CPU and Render's proxy answers 502. 500-1000
+visitors a day is 1-2 conversations at a time on average and 5-10 at the peak hour, so free plan
+survives a soft launch but not a campaign.
+
+Scaling path, in order:
+1. **Render starter for the bot (0.5 vCPU, 512 MB) and standard for the kb (1 vCPU, 2 GB)**: no
+   cold starts, ~3-5x the concurrent capacity, and the kb can run the local model (search 40 ms
+   instead of 300-900 ms). Disks come with it: recordings survive deploys. About $7 + $25 a month.
+2. **Paid Groq key**: the free key is shared by every environment and hits 429 within minutes of
+   real traffic; then every answer is the offline script. This is the first real limit, before CPU.
+3. **Vertical before horizontal**: one bigger instance handles ~30-40 conversations at once. Only
+   beyond that add instances, and then sessions (in memory today: `SESSIONS`, TTS cache, outbox)
+   need either sticky routing by `session_id` or a shared store (Redis / Postgres). Sticky routing
+   is the cheap first step: the load balancer hashes the `session_id` header/cookie to an instance.
+4. **CDN for the puppet assets** (`/avatar_puppet/*`, versioned, immutable): 7 MB per first visit
+   served from the edge, not from the Python process. Vercel or Cloudflare in front of the bot URL.
+5. **Region**: Singapore is the nearest Render region; a Mumbai VPS (Caddy + the same two processes,
+   DEPLOYMENT.md section 4) would take ~250 ms off every request for Delhi NCR customers.

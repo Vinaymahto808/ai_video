@@ -61,3 +61,4 @@ kb/seed/acr_customer_qa*.csv
 kb/seed/qa_rewrites.json
 kb/seed/QA_REVIEW.md
 tran_moment/prepared/acr_customer_qa*.csv
+!human_bot/tools/
