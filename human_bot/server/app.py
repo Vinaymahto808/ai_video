@@ -97,7 +97,7 @@ def puppet_version() -> str:
     newest = 0
     for d in (base / "prepared", base / "path_b" / "mouths", base / "path_b" / "expressions", base / "path_b" / "reactions"):
         if d.is_dir():
-            for f in d.iterdir():
+            for f in d.rglob("*"):  # recursive: the morph frames live in expressions/<name>/fNN.webp
                 if f.is_file():
                     newest = max(newest, f.stat().st_mtime_ns)
     return "%x" % (newest // 1_000_000)

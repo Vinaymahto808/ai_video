@@ -30,7 +30,16 @@ from prepare_portrait import MODEL, landmarks  # noqa: E402
 
 PREP = HERE.parent / "prepared"
 EXPR = HERE / "expressions"
-MIN_FRAMES, MAX_FRAMES, PX_PER_FRAME = 6, 24, 1.5
+MIN_FRAMES, MAX_FRAMES, PX_PER_FRAME = 14, 40, 0.6   # 2026-11-03: ~2.5x denser for smoother reactions
+# reaction warps (generate_reactions.py) that become morph sequences too, with their own alpha as the region
+REACTION_SEQ = {"brows_up": "brows", "brows_in": "brows", "gaze_up": "eyes", "gaze_left": "eyes", "gaze_right": "eyes"}
+
+
+def eased(k: int, n: int) -> float:
+    """Frame k of n at ease-in-out spacing: the card steps frames at a constant rate, so the motion itself
+    starts gently, moves through the middle and settles softly instead of snapping."""
+    u = k / n
+    return u * u * (3 - 2 * u)
 WEBP_Q = 86
 
 
@@ -124,7 +133,7 @@ def main() -> int:
         d = EXPR / name; d.mkdir(parents=True, exist_ok=True)
         frames = []
         for k in range(1, n + 1):
-            t = k / n
+            t = eased(k, n)
             Lt = (1 - t) * LB + t * LT
             wb = warp_to(base, LB, Lt, tris)
             wt = warp_to(target, LT, Lt, tris)
@@ -137,6 +146,41 @@ def main() -> int:
             frames.append(f"{name}/{fname}")
         out_meta[name] = {"region": region, "box": [x0, y0, x1 - x0, y1 - y0], "frames": frames, "file": f"{name}.png", "max_move_px": round(float(disp), 1)}
         print(f"  {name:12s} {region:4s} {n:2d} frames  (max move {disp:.0f}px, box {x1 - x0}x{y1 - y0})")
+    # brows / gaze: the reaction warps already exist as full-canvas layers; morph base -> layer inside the
+    # layer's own alpha so a raised brow or a glance is motion, not a 180 ms cross-fade
+    react_dir = HERE / "reactions"
+    for name, region in REACTION_SEQ.items():
+        lp = react_dir / f"{name}.png"
+        if not lp.exists():
+            print(f"  ! {name}: no reaction layer; skipped"); continue
+        layer_rgba = np.asarray(Image.open(lp).convert("RGBA")).astype(np.float32)
+        a = layer_rgba[..., 3:4] / 255.0
+        comp = base * (1 - a) + layer_rgba[..., :3] * a
+        try:
+            LT = with_border(dense_landmarks(comp), W, H)
+        except RuntimeError:
+            print(f"  ! {name}: no dense landmarks; skipped"); continue
+        mask = a
+        inside = mask[..., 0][np.clip(LB[:, 1].astype(int), 0, H - 1), np.clip(LB[:, 0].astype(int), 0, W - 1)] > 0.3
+        disp = np.linalg.norm((LT - LB)[inside], axis=1).max() if inside.any() else 6.0
+        n = int(np.clip(round(disp / PX_PER_FRAME), MIN_FRAMES, MAX_FRAMES))
+        ys, xs = np.where(mask[..., 0] > 0.01)
+        x0, y0, x1, y1 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+        d = EXPR / name; d.mkdir(parents=True, exist_ok=True)
+        frames = []
+        for k in range(1, n + 1):
+            t = eased(k, n)
+            Lt = (1 - t) * LB + t * LT
+            wb = warp_to(base, LB, Lt, tris)
+            wt = warp_to(comp, LT, Lt, tris)
+            morph = (1 - t) * wb + t * wt
+            layer = base * (1 - mask) + morph * mask
+            rgba = np.dstack([np.clip(layer, 0, 255).astype(np.uint8), (mask[..., 0] * 255).astype(np.uint8)])
+            fname = f"f{k:02d}.webp"
+            Image.fromarray(rgba[y0:y1, x0:x1], "RGBA").save(d / fname, "WEBP", quality=WEBP_Q, method=4)
+            frames.append(f"{name}/{fname}")
+        out_meta[name] = {"region": region, "box": [x0, y0, x1 - x0, y1 - y0], "frames": frames, "file": f"../reactions/{name}.png", "max_move_px": round(float(disp), 1)}
+        print(f"  {name:12s} {region:5s} {n:2d} frames  (max move {disp:.0f}px, box {x1 - x0}x{y1 - y0})")
     meta["layers"] = out_meta
     meta["frames_note"] = "frames[k] = morph base->expression at t=(k+1)/n, cropped to box; play forward to show, backward to relax"
     meta_path.write_text(json.dumps(meta, indent=1), encoding="utf-8")

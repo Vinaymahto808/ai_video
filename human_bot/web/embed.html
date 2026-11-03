@@ -550,13 +550,15 @@
     const L = PUP.layers || {}, X = PUP.expr || {};
     const speaking = PUP.mouth !== "X.png";
     const dtF = Math.min(50, now - (PUP.lastDraw || now)); PUP.lastDraw = now;
-    const anim = (PUP.anim ||= { face: { name: null, pos: 0, target: 0 }, eyes: { name: null, pos: 0, target: 0 } });
-    const want = (PUP.want ||= { face: null, eyes: null });
+    const anim = (PUP.anim ||= { face: { name: null, pos: 0, target: 0 }, eyes: { name: null, pos: 0, target: 0 }, brows: { name: null, pos: 0, target: 0 } });
+    const want = (PUP.want ||= { face: null, eyes: null, brows: null });
     // blink: the eyes channel wants eyes_closed for the first ~60 ms of the blink window, then relaxes
     if (lid && X.eyes_closed) want.eyes = (dt < 70) ? "eyes_closed" : (want.eyes === "eyes_closed" ? null : want.eyes);
     else if (!lid && PUP.gaze && X[PUP.gaze]) want.eyes = PUP.gaze;
     else if (!lid && !PUP.gaze && want.eyes !== "eyes_closed") want.eyes = null;
     want.face = PUP.exprName && X[PUP.exprName] && PUP.exprMeta[PUP.exprName]?.region === "face" ? PUP.exprName : null;
+    // brows as motion when the morph sequence exists (brows_up / brows_in from morph_frames.py), else the alpha fade below
+    want.brows = PUP.brows && X[PUP.brows] ? PUP.brows : null;
     // one channel = one expression at a time: relax the current one (play backward) before the next plays forward
     const advance = (ch, w, fwdMs, backMs) => {
       const a = anim[ch];
@@ -571,10 +573,11 @@
     };
     advance("face", want.face, 420, 360);   // calm: an expression takes ~0.4 s to arrive and to relax (was 260/180)
     advance("eyes", want.eyes, want.eyes === "eyes_closed" ? 70 : 220, want.eyes === null && anim.eyes.name === "eyes_closed" ? 90 : 260);
+    advance("brows", want.brows, 320, 300);
     const frameOf = (ch) => { const a = anim[ch]; if (!a.name) return null; const i = Math.min(X[a.name].frames.length, Math.max(1, Math.round(a.pos))); return a.pos <= 0.01 ? null : { x: X[a.name], i }; };
-    const fF = frameOf("face"), fE = frameOf("eyes");
-    // brows warp layer: alpha fade (small, no geometry to morph)
-    const brows = PUP.brows && L[PUP.brows] ? PUP.brows : null;
+    const fF = frameOf("face"), fE = frameOf("eyes"), fB = frameOf("brows");
+    // brows warp layer without a frame sequence: alpha fade (small, no geometry to morph)
+    const brows = PUP.brows && !X[PUP.brows] && L[PUP.brows] ? PUP.brows : null;
     const fade = (PUP.fade ||= { brows: { name: null, a: 0 }, mouthPrev: null, mouthA: 0, smile: { a: 0 } });
     const step = dtF / 180;
     if (brows && fade.brows.name !== brows) fade.brows.name = brows;
@@ -586,12 +589,13 @@
     const restSmile = !speaking && !want.face && PUP.restShape === "smile.png" && PUP.mouths["smile.png"];
     fade.smile.a = Math.max(0, Math.min(1, fade.smile.a + (restSmile ? step : -step)));
     const q = (v) => Math.round(v * 20);
-    const key = [PUP.mouth, fade.mouthPrev, q(fade.mouthA), fF ? anim.face.name + fF.i : "", fE ? anim.eyes.name + fE.i : (lid && !X.eyes_closed ? "lid" + lid : ""), fade.brows.name, q(fade.brows.a), q(fade.smile.a)].join("|");
+    const key = [PUP.mouth, fade.mouthPrev, q(fade.mouthA), fF ? anim.face.name + fF.i : "", fE ? anim.eyes.name + fE.i : (lid && !X.eyes_closed ? "lid" + lid : ""), fB ? anim.brows.name + fB.i : "", fade.brows.name, q(fade.brows.a), q(fade.smile.a)].join("|");
     if (key !== PUP.drawn) {
       PUP.drawn = key;
       c.drawImage(PUP.base, 0, 0);
       if (fF) c.drawImage(fF.x.frames[fF.i - 1], fF.x.box[0], fF.x.box[1]);
-      if (fade.brows.name && fade.brows.a > 0) { c.globalAlpha = fade.brows.a; c.drawImage(L[fade.brows.name], 0, 0); c.globalAlpha = 1; }
+      if (fB) c.drawImage(fB.x.frames[fB.i - 1], fB.x.box[0], fB.x.box[1]);
+      else if (fade.brows.name && fade.brows.a > 0) { c.globalAlpha = fade.brows.a; c.drawImage(L[fade.brows.name], 0, 0); c.globalAlpha = 1; }
       if (fE) c.drawImage(fE.x.frames[fE.i - 1], fE.x.box[0], fE.x.box[1]);
       else if (lid && !X.eyes_closed) { if (L.eyes_closed) c.drawImage(L[lid >= BLINK_STEPS * 0.7 ? "eyes_closed" : "eyes_half"] || L.eyes_closed, 0, 0); else drawLids(c, lid / BLINK_STEPS); }
       if (speaking || fade.mouthA > 0) {
@@ -618,7 +622,7 @@
     clearTimeout(PUP.glanceT);
     const question = /\?\s*$/.test(text || "");
     if (state === "thinking") {
-      PUP.gaze = X.glance ? "glance" : "gaze_up"; PUP.brows = L.brows_up ? "brows_up" : null; PUP.exprName = null;
+      PUP.gaze = X.gaze_up ? "gaze_up" : (X.glance ? "glance" : "gaze_up"); PUP.brows = (X.brows_up || L.brows_up) ? "brows_up" : null; PUP.exprName = null;
     } else if (state === "listening" || state === "idle") {
       PUP.gaze = null; PUP.brows = null;
       PUP.exprName = pick(M.listening, "smile_soft");
@@ -640,7 +644,7 @@
       // the warm / big smiles and the surprised face moved the cheeks on top of the lips. They still play
       // between sentences (greeting, backchannel, listening) where the mouth is at rest.
       PUP.exprName = (emotion === "enthusiastic" || emotion === "warm") && X.smile_soft ? "smile_soft" : null;
-      PUP.brows = emotion === "concerned" ? (L.brows_in ? "brows_in" : null) : (question && !PUP.exprName && L.brows_up) ? "brows_up" : null;
+      PUP.brows = emotion === "concerned" ? ((X.brows_in || L.brows_in) ? "brows_in" : null) : (question && !PUP.exprName && (X.brows_up || L.brows_up)) ? "brows_up" : null;
     }
     if (emotion) PUP.mood = emotion;
     PUP.restShape = (PUP.mood === "warm" || PUP.mood === "enthusiastic") && PUP.mouths["smile.png"] ? "smile.png" : "X.png";

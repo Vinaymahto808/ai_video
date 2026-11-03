@@ -19,7 +19,18 @@
     "smile_soft/f04.webp",
     "smile_soft/f05.webp",
     "smile_soft/f06.webp",
-    "smile_soft/f07.webp"
+    "smile_soft/f07.webp",
+    "smile_soft/f08.webp",
+    "smile_soft/f09.webp",
+    "smile_soft/f10.webp",
+    "smile_soft/f11.webp",
+    "smile_soft/f12.webp",
+    "smile_soft/f13.webp",
+    "smile_soft/f14.webp",
+    "smile_soft/f15.webp",
+    "smile_soft/f16.webp",
+    "smile_soft/f17.webp",
+    "smile_soft/f18.webp"
    ],
    "file": "smile_soft.png",
    "max_move_px": 10.5
@@ -42,7 +53,21 @@
     "smile_big/f07.webp",
     "smile_big/f08.webp",
     "smile_big/f09.webp",
-    "smile_big/f10.webp"
+    "smile_big/f10.webp",
+    "smile_big/f11.webp",
+    "smile_big/f12.webp",
+    "smile_big/f13.webp",
+    "smile_big/f14.webp",
+    "smile_big/f15.webp",
+    "smile_big/f16.webp",
+    "smile_big/f17.webp",
+    "smile_big/f18.webp",
+    "smile_big/f19.webp",
+    "smile_big/f20.webp",
+    "smile_big/f21.webp",
+    "smile_big/f22.webp",
+    "smile_big/f23.webp",
+    "smile_big/f24.webp"
    ],
    "file": "smile_big.png",
    "max_move_px": 14.6
@@ -74,7 +99,28 @@
     "surprised/f16.webp",
     "surprised/f17.webp",
     "surprised/f18.webp",
-    "surprised/f19.webp"
+    "surprised/f19.webp",
+    "surprised/f20.webp",
+    "surprised/f21.webp",
+    "surprised/f22.webp",
+    "surprised/f23.webp",
+    "surprised/f24.webp",
+    "surprised/f25.webp",
+    "surprised/f26.webp",
+    "surprised/f27.webp",
+    "surprised/f28.webp",
+    "surprised/f29.webp",
+    "surprised/f30.webp",
+    "surprised/f31.webp",
+    "surprised/f32.webp",
+    "surprised/f33.webp",
+    "surprised/f34.webp",
+    "surprised/f35.webp",
+    "surprised/f36.webp",
+    "surprised/f37.webp",
+    "surprised/f38.webp",
+    "surprised/f39.webp",
+    "surprised/f40.webp"
    ],
    "file": "surprised.png",
    "max_move_px": 28.0
@@ -97,7 +143,21 @@
     "glance/f07.webp",
     "glance/f08.webp",
     "glance/f09.webp",
-    "glance/f10.webp"
+    "glance/f10.webp",
+    "glance/f11.webp",
+    "glance/f12.webp",
+    "glance/f13.webp",
+    "glance/f14.webp",
+    "glance/f15.webp",
+    "glance/f16.webp",
+    "glance/f17.webp",
+    "glance/f18.webp",
+    "glance/f19.webp",
+    "glance/f20.webp",
+    "glance/f21.webp",
+    "glance/f22.webp",
+    "glance/f23.webp",
+    "glance/f24.webp"
    ],
    "file": "glance.png",
    "max_move_px": 14.5
@@ -116,7 +176,15 @@
     "smile_warm/f03.webp",
     "smile_warm/f04.webp",
     "smile_warm/f05.webp",
-    "smile_warm/f06.webp"
+    "smile_warm/f06.webp",
+    "smile_warm/f07.webp",
+    "smile_warm/f08.webp",
+    "smile_warm/f09.webp",
+    "smile_warm/f10.webp",
+    "smile_warm/f11.webp",
+    "smile_warm/f12.webp",
+    "smile_warm/f13.webp",
+    "smile_warm/f14.webp"
    ],
    "file": "smile_warm.png",
    "max_move_px": 5.7
@@ -143,7 +211,28 @@
     "eyes_closed/f11.webp",
     "eyes_closed/f12.webp",
     "eyes_closed/f13.webp",
-    "eyes_closed/f14.webp"
+    "eyes_closed/f14.webp",
+    "eyes_closed/f15.webp",
+    "eyes_closed/f16.webp",
+    "eyes_closed/f17.webp",
+    "eyes_closed/f18.webp",
+    "eyes_closed/f19.webp",
+    "eyes_closed/f20.webp",
+    "eyes_closed/f21.webp",
+    "eyes_closed/f22.webp",
+    "eyes_closed/f23.webp",
+    "eyes_closed/f24.webp",
+    "eyes_closed/f25.webp",
+    "eyes_closed/f26.webp",
+    "eyes_closed/f27.webp",
+    "eyes_closed/f28.webp",
+    "eyes_closed/f29.webp",
+    "eyes_closed/f30.webp",
+    "eyes_closed/f31.webp",
+    "eyes_closed/f32.webp",
+    "eyes_closed/f33.webp",
+    "eyes_closed/f34.webp",
+    "eyes_closed/f35.webp"
    ],
    "file": "eyes_closed.png",
    "max_move_px": 21.1
@@ -164,10 +253,159 @@
     "wink/f05.webp",
     "wink/f06.webp",
     "wink/f07.webp",
-    "wink/f08.webp"
+    "wink/f08.webp",
+    "wink/f09.webp",
+    "wink/f10.webp",
+    "wink/f11.webp",
+    "wink/f12.webp",
+    "wink/f13.webp",
+    "wink/f14.webp",
+    "wink/f15.webp",
+    "wink/f16.webp",
+    "wink/f17.webp",
+    "wink/f18.webp",
+    "wink/f19.webp",
+    "wink/f20.webp"
    ],
    "file": "wink.png",
    "max_move_px": 12.1
+  },
+  "brows_up": {
+   "region": "brows",
+   "box": [
+    210,
+    139,
+    224,
+    77
+   ],
+   "frames": [
+    "brows_up/f01.webp",
+    "brows_up/f02.webp",
+    "brows_up/f03.webp",
+    "brows_up/f04.webp",
+    "brows_up/f05.webp",
+    "brows_up/f06.webp",
+    "brows_up/f07.webp",
+    "brows_up/f08.webp",
+    "brows_up/f09.webp",
+    "brows_up/f10.webp",
+    "brows_up/f11.webp",
+    "brows_up/f12.webp",
+    "brows_up/f13.webp",
+    "brows_up/f14.webp",
+    "brows_up/f15.webp",
+    "brows_up/f16.webp"
+   ],
+   "file": "../reactions/brows_up.png",
+   "max_move_px": 9.5
+  },
+  "brows_in": {
+   "region": "brows",
+   "box": [
+    210,
+    139,
+    224,
+    77
+   ],
+   "frames": [
+    "brows_in/f01.webp",
+    "brows_in/f02.webp",
+    "brows_in/f03.webp",
+    "brows_in/f04.webp",
+    "brows_in/f05.webp",
+    "brows_in/f06.webp",
+    "brows_in/f07.webp",
+    "brows_in/f08.webp",
+    "brows_in/f09.webp",
+    "brows_in/f10.webp",
+    "brows_in/f11.webp",
+    "brows_in/f12.webp",
+    "brows_in/f13.webp",
+    "brows_in/f14.webp"
+   ],
+   "file": "../reactions/brows_in.png",
+   "max_move_px": 1.5
+  },
+  "gaze_up": {
+   "region": "eyes",
+   "box": [
+    217,
+    195,
+    209,
+    56
+   ],
+   "frames": [
+    "gaze_up/f01.webp",
+    "gaze_up/f02.webp",
+    "gaze_up/f03.webp",
+    "gaze_up/f04.webp",
+    "gaze_up/f05.webp",
+    "gaze_up/f06.webp",
+    "gaze_up/f07.webp",
+    "gaze_up/f08.webp",
+    "gaze_up/f09.webp",
+    "gaze_up/f10.webp",
+    "gaze_up/f11.webp",
+    "gaze_up/f12.webp",
+    "gaze_up/f13.webp",
+    "gaze_up/f14.webp"
+   ],
+   "file": "../reactions/gaze_up.png",
+   "max_move_px": 3.3
+  },
+  "gaze_left": {
+   "region": "eyes",
+   "box": [
+    217,
+    195,
+    209,
+    56
+   ],
+   "frames": [
+    "gaze_left/f01.webp",
+    "gaze_left/f02.webp",
+    "gaze_left/f03.webp",
+    "gaze_left/f04.webp",
+    "gaze_left/f05.webp",
+    "gaze_left/f06.webp",
+    "gaze_left/f07.webp",
+    "gaze_left/f08.webp",
+    "gaze_left/f09.webp",
+    "gaze_left/f10.webp",
+    "gaze_left/f11.webp",
+    "gaze_left/f12.webp",
+    "gaze_left/f13.webp",
+    "gaze_left/f14.webp"
+   ],
+   "file": "../reactions/gaze_left.png",
+   "max_move_px": 4.6
+  },
+  "gaze_right": {
+   "region": "eyes",
+   "box": [
+    217,
+    195,
+    209,
+    56
+   ],
+   "frames": [
+    "gaze_right/f01.webp",
+    "gaze_right/f02.webp",
+    "gaze_right/f03.webp",
+    "gaze_right/f04.webp",
+    "gaze_right/f05.webp",
+    "gaze_right/f06.webp",
+    "gaze_right/f07.webp",
+    "gaze_right/f08.webp",
+    "gaze_right/f09.webp",
+    "gaze_right/f10.webp",
+    "gaze_right/f11.webp",
+    "gaze_right/f12.webp",
+    "gaze_right/f13.webp",
+    "gaze_right/f14.webp"
+   ],
+   "file": "../reactions/gaze_right.png",
+   "max_move_px": 4.0
   }
  },
  "moods": {

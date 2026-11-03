@@ -118,12 +118,12 @@ def brow_field(shape, p: dict, mode: str) -> tuple[np.ndarray, np.ndarray, np.nd
         band = box_alpha(shape, x0, x1, by - 34, by + 30, 10, 14)
         vert = np.exp(-((yy - by) / 16.0) ** 2)
         if mode == "up":
-            dy -= 7.0 * band * vert            # whole brow up
+            dy -= 10.5 * band * vert           # whole brow up (2026-11-03: 7 -> 10.5 px, the raise was too subtle on the card)
         else:  # "in": inner end down and toward the nose
             inner_x = g["x1"] if side == "l" else g["x0"]
             near = np.clip(1 - np.abs(xx - inner_x) / (g["w"] * 0.8), 0, 1) ** 1.2
-            dy += 5.0 * band * vert * near
-            dx += (6.0 if side == "l" else -6.0) * band * vert * near
+            dy += 7.0 * band * vert * near
+            dx += (8.0 if side == "l" else -8.0) * band * vert * near
         alpha = np.maximum(alpha, box_alpha(shape, x0 - 6, x1 + 6, by - 42, by + 34, 12, 12))
     return dx, dy, alpha
 
@@ -189,7 +189,7 @@ def main() -> int:
         save_layer(warp(rgb, dx, dy), ea, OUT / f"{name}.png")
         layers[name] = {"file": f"{name}.png", "kind": "eyes", "box": ebox, "closed": amt}
     # eyes: gaze
-    for name, (gx, gy) in (("gaze_left", (-5.0, 0.0)), ("gaze_right", (5.0, 0.0)), ("gaze_up", (0.0, -3.5))):
+    for name, (gx, gy) in (("gaze_left", (-6.5, 0.0)), ("gaze_right", (6.5, 0.0)), ("gaze_up", (0.0, -5.5))):
         dx = np.zeros((H, W), np.float32); dy = np.zeros((H, W), np.float32)
         for g in (gl, gr):
             ddx, ddy = gaze_field((H, W), g, gx, gy); dx += ddx; dy += ddy
