@@ -600,8 +600,9 @@ class Handler(BaseHTTPRequestHandler):
         super().send_response(code, message)
 
     def end_headers(self):
-        # embeddable from the dealer sites (all sites when the allow-list is "*")
-        ancestors = "*" if "*" in ALLOWED_ORIGINS else " ".join(ALLOWED_ORIGINS) or "'none'"
+        # embeddable from the dealer sites (all sites when the allow-list is "*") and from this origin
+        # itself: the site mirror at "/" frames /embed same-origin, which a bare allow-list would block
+        ancestors = "*" if "*" in ALLOWED_ORIGINS else " ".join(["'self'"] + ALLOWED_ORIGINS)
         self.send_header("Content-Security-Policy", f"frame-ancestors {ancestors}")
         self.send_header("Cross-Origin-Resource-Policy", "cross-origin")
         self.send_header("X-Content-Type-Options", "nosniff")
