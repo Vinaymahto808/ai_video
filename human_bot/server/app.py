@@ -1452,6 +1452,18 @@ def main() -> int:
             return 2
         persona = match
 
+    # One bot per port. ThreadingHTTPServer sets allow_reuse_address, and on Windows SO_REUSEADDR lets a second
+    # process bind the same port, so two bots silently split the traffic (seen 2026-11-03: an old and a new
+    # process both answering :4001). Probe first and refuse loudly; on Windows also drop the reuse flag.
+    import socket
+    probe_host = "127.0.0.1" if a.host in ("", "0.0.0.0") else a.host
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.settimeout(0.5)
+        if probe.connect_ex((probe_host, a.port)) == 0:
+            print(f"port {a.port} is already serving (another human_bot?): refusing to start a second one", file=sys.stderr)
+            return 2
+    if sys.platform == "win32":
+        ThreadingHTTPServer.allow_reuse_address = False
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True
     srv.persona = persona
