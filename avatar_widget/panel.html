@@ -95,7 +95,7 @@
 <script type="module">
   import { createWidget } from "./src/widget.js";
   const q = new URLSearchParams(location.search);
-  const api = q.get("api") || "http://127.0.0.1:4001";
+  const api = q.get("api") || (/^(127\.0\.0\.1|localhost)$/.test(location.hostname) ? "http://127.0.0.1:4001" : "https://neha-bot-mkjv.onrender.com");
   const accent = q.get("accent"); if (accent) document.documentElement.style.setProperty("--accent", accent);
   const ring = q.get("ring"); if (ring) document.documentElement.style.setProperty("--ring", ring);
   const ui = Object.fromEntries(["video","img","status","level","name","sub"].map((id) => [id, document.getElementById(id)]));

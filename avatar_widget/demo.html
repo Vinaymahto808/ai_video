@@ -18,7 +18,7 @@
   <h1>Periodic Service — Hyundai Creta</h1>
   <p>This page stands in for a dealer/workshop site. The floating launcher bottom-right comes from one script tag;
      everything inside the panel runs in an iframe served from this folder and talks to human_bot
-     (<code>?api=</code> below, default <code>http://127.0.0.1:4001</code>).</p>
+     (<code>?api=</code> below; default is the Render bot, or <code>http://127.0.0.1:4001</code> on a local checkout).</p>
   <div class="card">
     <button onclick="AvatarWidget.open()">Talk to a consultant</button>
     <button onclick="AvatarWidget.close()">Close</button>
@@ -29,7 +29,8 @@
   // dev convenience: ?api=http://127.0.0.1:4002 switches the bot origin; ?ws=ws://127.0.0.1:4101
   // routes session/chat through tools/ws-shim.mjs instead of SSE. The persona comes from data-persona.
   var q = new URLSearchParams(location.search);
-  var api = q.get("api") || localStorage.getItem("neha_api_base") || "http://127.0.0.1:4001";
+  // default: the Render bot; on a local checkout pass ?api=http://127.0.0.1:4001
+  var api = q.get("api") || localStorage.getItem("neha_api_base") || (/^(127\.0\.0\.1|localhost)$/.test(location.hostname) ? "http://127.0.0.1:4001" : "https://neha-bot-mkjv.onrender.com");
   var s = document.createElement("script");
   s.src = new URL("loader.js", location.href).href;   // next to this page: works at :4300 (root) and under /avatar_widget/ on a static host
   s.setAttribute("data-api", api);

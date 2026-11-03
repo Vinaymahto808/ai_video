@@ -17,7 +17,7 @@
   "use strict";
   // Bump on every release: appended as ?v= to panel.html, which passes it on to src/*.js, so a CDN
   // or browser cache never mixes an old panel with new modules. (Classic script: no `export`.)
-  var VERSION = "2026.11.03";
+  var VERSION = "2026.11.03b";
   if (window.__avatarWidgetLoaded) return;
   window.__avatarWidgetLoaded = true;
 

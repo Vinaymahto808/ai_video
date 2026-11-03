@@ -55,11 +55,12 @@
 <script>
   var KEY = "neha_api_base";
   var el = document.getElementById("api");
-  el.value = localStorage.getItem(KEY) || "";
+  var DEFAULT_API = "https://neha-bot-mkjv.onrender.com";   // Render service neha-bot (2026-11-03); the box can override it
+  el.value = localStorage.getItem(KEY) || DEFAULT_API;
   function base() { return (el.value || "").trim().replace(/\/+$/, ""); }
   function save() { localStorage.setItem(KEY, base()); document.getElementById("status").textContent = "saved"; render(); }
   function render() {
-    var b = base() || "https://BOT-HOST";
+    var b = base() || DEFAULT_API;
     document.getElementById("snippet").textContent = '<script src="' + location.origin + '/avatar_widget/loader.js" data-api="' + b + '" data-persona="auto-car-repair" defer><\/script>';
   }
   function open(path) {
