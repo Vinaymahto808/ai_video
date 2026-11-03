@@ -169,3 +169,19 @@ need a real host. `render.yaml` is a Render blueprint for both (region Singapore
 3. Upload `kb/data/kb.sqlite` (the only copy of the crawl) to the kb disk once, or run a crawl there with
    `KB_ADMIN_KEY`.
 Any VPS with Caddy (section 4) works the same way; Render is just the no-ops option.
+
+### Live since 2026-11-03 (free plan, created through the Render API, not the Blueprint)
+
+| | URL | Render service |
+|---|---|---|
+| bot (site mirror + launcher at `/`, `/embed`, `/tts`, `/chat`) | https://neha-bot-mkjv.onrender.com | `srv-dbksp3tbedkc73efku70` |
+| knowledge | https://neha-kb.onrender.com | `srv-dbksp36gekts73f2naog` |
+| widget files + landing | https://avatarwidget-five.vercel.app | Vercel |
+
+Both run on plan **free**, so: the first call after 15 idle minutes waits ~40 s (cold start), there is no
+persistent disk (conversation records and audio in `human_bot/data` are lost on every redeploy), and the kb
+answers through the Gemini vector path (~1.7 s) because the 512 MB instance cannot hold the local embedding
+model. The crawl is seeded at boot from the committed `kb/seed/kb.sqlite` by `kb/src/seed.js` (public
+site content only; refresh it with `node src/seed.js`-style copy after a recrawl). Going to customers:
+plan `starter` for the bot, `standard` for kb, uncomment the two `disk` blocks in `render.yaml`, set
+`KB_QUERY_PROVIDER=local` and drop the empty `KB_LOCAL_MODEL`. Every push to `main` redeploys both.
