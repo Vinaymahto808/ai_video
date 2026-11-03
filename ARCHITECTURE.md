@@ -105,6 +105,7 @@ a cross-encoder would cost 100-300 ms on CPU), Redis FAQ cache (the in-process q
 | `POST /chat` | `{session_id, text}` → `text/event-stream` | events `meta{generation,provider}`, `backchannel{text}`, `sources{results}`, `sentence{index,text,emotion,gesture}`, `final{text,chunks,latency_ms,words}`, `interrupted`, `error` |
 | `GET /tts?text=&emo=&voice=&prefetch=1` | server-produced text only | chunked `audio/mpeg` (first bytes ~1 s), or 202 for prefetch, or 403/429/503 |
 | `POST /stt?session_id=` | raw audio body (webm/mp4/wav, ≤ 8 MB) | `{text, ms}`; 503 → use the browser recogniser |
+| `GET /tts_cues?text=&emo=` | same text/emo as `/tts` (server-produced only) | `{cues:[{s,e,v}], map}` lip timeline from Edge word boundaries; `[]` when the voice gave no timing (card falls back to the loudness analyser) |
 | `POST /end` | `{session_id}` | `{ok, conversation_id, turns, lead}` |
 | `GET /conversations[?visitor=&phone=&limit=]`, `/conversations/<id>`, `/conversations/<id>/audio/<file>` | loopback or `X-Admin-Key` | structured records (CRM feed) |
 | `GET /health` | | `{ok, degraded[], ...}` (detail on loopback) |

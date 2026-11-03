@@ -648,8 +648,10 @@ def _prosody(emotion: str | None) -> tuple[str, str]:
     return (f"{r:+d}%", f"{p:+d}Hz")
 
 
-def _edge_stream(text: str, voice: str | None = None, emotion: str = "neutral") -> Iterator[bytes]:
-    """MP3 chunks as Edge produces them (first one ~1 s in, the rest over the next 0.5-3 s)."""
+def _edge_stream(text: str, voice: str | None = None, emotion: str = "neutral", words: list | None = None) -> Iterator[bytes]:
+    """MP3 chunks as Edge produces them (first one ~1 s in, the rest over the next 0.5-3 s).
+    `words`, when given, receives (start_s, duration_s, spoken_word) from Edge's WordBoundary events: the
+    card turns them into lip shapes that follow the actual words (see server/app.py viseme_cues)."""
     try:
         import asyncio
 
@@ -660,7 +662,11 @@ def _edge_stream(text: str, voice: str | None = None, emotion: str = "neutral") 
     rate, pitch = _prosody(emotion)
     loop = asyncio.new_event_loop()
     try:
-        agen = edge_tts.Communicate(spoken[:2000], v, rate=rate, pitch=pitch).stream().__aiter__()
+        try:
+            com = edge_tts.Communicate(spoken[:2000], v, rate=rate, pitch=pitch, boundary="WordBoundary")
+        except TypeError:  # older edge-tts: boundaries are on by default
+            com = edge_tts.Communicate(spoken[:2000], v, rate=rate, pitch=pitch)
+        agen = com.stream().__aiter__()
         total = 0
         deadline = time.monotonic() + 30
         while True:
@@ -673,6 +679,8 @@ def _edge_stream(text: str, voice: str | None = None, emotion: str = "neutral") 
             if chunk["type"] == "audio" and chunk["data"]:
                 total += len(chunk["data"])
                 yield chunk["data"]
+            elif chunk["type"] == "WordBoundary" and words is not None:
+                words.append((chunk["offset"] / 1e7, chunk["duration"] / 1e7, chunk.get("text", "")))
         if total < 400:
             raise TTSUnavailable("edge: empty audio")
     finally:
@@ -752,7 +760,8 @@ TTS_PROVIDER = TTS_CHAIN[0]
 _TTS_LAST_USED: dict[str, str] = {}
 
 
-def synthesize_stream(text: str, voice: str | None = None, fmt: str = "wav", emotion: str = "neutral") -> Iterator[bytes]:
+def synthesize_stream(text: str, voice: str | None = None, fmt: str = "wav", emotion: str = "neutral",
+                      words: list | None = None) -> Iterator[bytes]:
     """Audio chunks for `text`. Edge streams as it synthesizes; the other providers yield one whole clip.
 
     A provider that fails before producing any audio is skipped; a failure mid-stream propagates, because
@@ -769,7 +778,7 @@ def synthesize_stream(text: str, voice: str | None = None, fmt: str = "wav", emo
             elif p == "groq":
                 gen = iter([_synthesize_groq(text, voice, fmt)])
             elif p == "edge":
-                gen = _edge_stream(text, voice if voice and "Neural" in voice else None, emotion)
+                gen = _edge_stream(text, voice if voice and "Neural" in voice else None, emotion, words)
             else:
                 raise TTSUnavailable(f"unknown TTS provider '{p}'")
             first = next(gen)

@@ -214,6 +214,45 @@ def tts_key(text: str, voice: str | None = None, emotion: str = "neutral") -> st
     return f"{voice or 'default'}|{emotion or 'neutral'}|{text}"
 
 
+TTS_CUES: dict[str, list[dict]] = {}   # tts_key -> [{"s": start_s, "e": end_s, "v": Rhubarb letter}] for the card's lips
+# letter -> Rhubarb mouth letter (A closed, B teeth, C open, D wide, F pucker, G f/v, H l, X rest); same map as
+# tran_moment/synth_talk_clips.py so the live card and the rendered clips move their lips the same way
+_LETTER_VISEME = {"a": "C", "e": "B", "i": "D", "o": "F", "u": "G", "m": "A", "b": "A", "p": "A", "f": "G", "v": "G",
+                  "l": "H", "w": "F", "y": "D", "s": "B", "z": "B", "t": "B", "d": "B", "n": "B", "r": "B", "k": "C",
+                  "g": "C", "h": "C", "j": "B", "c": "B"}
+
+
+def viseme_cues(text: str, words: list[tuple[float, float, str]]) -> list[dict]:
+    """Lip-shape timeline for a clip from Edge's word boundaries: the letters of each (Roman) word are spread over
+    that word's time, rests (X) fill the pauses, micro-cues and repeats merge so the mouth does not flicker.
+    Returns [] when the provider gave no word timing (the card then falls back to the loudness analyser)."""
+    if not words:
+        return []
+    roman = re.findall(r"[A-Za-z]+", text)
+    cues: list[dict] = []
+    t_prev = 0.0
+    for i, (start, dur, _spoken) in enumerate(words):
+        if start - t_prev > 0.12:
+            cues.append({"s": round(t_prev, 3), "e": round(start, 3), "v": "X"})
+        letters = [c for c in (roman[i] if i < len(roman) else "a").lower() if c.isalpha()] or ["a"]
+        keep: list[str] = []
+        for c in letters:                               # consonant clusters collapse to their first consonant
+            if c in "aeiou" or not keep or keep[-1] in "aeiou":
+                keep.append(c)
+        step = max(dur, 0.08) / len(keep)
+        for k, c in enumerate(keep):
+            cues.append({"s": round(start + k * step, 3), "e": round(start + (k + 1) * step, 3), "v": _LETTER_VISEME.get(c, "B")})
+        t_prev = start + max(dur, 0.08)
+    cues.append({"s": round(t_prev, 3), "e": round(t_prev + 0.3, 3), "v": "X"})
+    merged: list[dict] = []
+    for c in cues:
+        if merged and ((c["e"] - c["s"]) < 0.09 or merged[-1]["v"] == c["v"]):
+            merged[-1]["e"] = c["e"]
+        else:
+            merged.append(dict(c))
+    return merged
+
+
 class TtsJob:
     """One synthesis. Readers can stream the chunks while the producer thread is still receiving them,
     so /tts starts sending audio ~1 s after the request instead of after the whole clip (1.5-4.6 s)."""
@@ -221,6 +260,7 @@ class TtsJob:
     def __init__(self, text: str, voice: str | None, emotion: str = "neutral") -> None:
         self.text, self.voice, self.emotion = text, voice, emotion
         self.chunks: list[bytes] = []
+        self.words: list[tuple[float, float, str]] = []   # Edge WordBoundary events (start_s, dur_s, word)
         self.done = False
         self.error: str | None = None
         self.cv = threading.Condition()
@@ -228,7 +268,7 @@ class TtsJob:
     def run(self) -> None:
         key = tts_key(self.text, self.voice, self.emotion)
         try:
-            for chunk in synthesize_stream(self.text, self.voice, emotion=self.emotion):
+            for chunk in synthesize_stream(self.text, self.voice, emotion=self.emotion, words=self.words):
                 with self.cv:
                     self.chunks.append(chunk)
                     self.cv.notify_all()
@@ -237,6 +277,9 @@ class TtsJob:
                 while len(TTS_CACHE) >= TTS_CACHE_MAX:
                     TTS_CACHE.pop(next(iter(TTS_CACHE)))  # oldest first
                 TTS_CACHE[key] = audio
+                while len(TTS_CUES) >= TTS_CACHE_MAX:
+                    TTS_CUES.pop(next(iter(TTS_CUES)))
+                TTS_CUES[key] = viseme_cues(self.text, self.words)
             TTS_LAST.pop("error", None)
         except Exception as ex:  # noqa: BLE001
             self.error = str(ex)[:220]
@@ -780,6 +823,30 @@ class Handler(BaseHTTPRequestHandler):
             })
         if path == "/tts":
             return self._tts()
+        if path == "/tts_cues":
+            # Lip timeline for a clip the server produced (same text/emo/voice as /tts). Waits briefly for a
+            # synthesis in flight; [] means "no word timing, use the analyser".
+            q = parse_qs(urlparse(self.path).query)
+            text = (q.get("text") or [""])[0].strip()
+            voice = (q.get("voice") or [""])[0].strip() or None
+            emotion = (q.get("emo") or ["neutral"])[0].strip().lower()
+            if emotion not in EMOTIONS:
+                emotion = "neutral"
+            if voice and voice not in ALLOWED_VOICES:
+                voice = None
+            if not text or len(text) > 600 or not tts_text_allowed(text, voice):
+                return self._json(404, {"cues": []})
+            key = tts_key(text, voice, emotion)
+            deadline = time.monotonic() + 4.0
+            while True:
+                with TTS_LOCK:
+                    cues = TTS_CUES.get(key)
+                    inflight = TTS_INFLIGHT.get(key)
+                if cues is not None or inflight is None or inflight.done or time.monotonic() > deadline:
+                    break
+                time.sleep(0.05)
+            return self._json(200, {"cues": cues or [], "map": {"A": "closed.png", "B": "E.png", "C": "A.png", "D": "I.png",
+                                                                 "E": "E.png", "F": "U.png", "G": "U.png", "H": "L.png", "X": "X.png"}})
         if path == "/site":
             # the SPA router must see "/" or it renders its own 404; the mirror lives at "/"
             self.send_response(302)
