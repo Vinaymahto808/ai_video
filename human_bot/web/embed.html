@@ -430,7 +430,10 @@
     const get = (f) => fetch("/avatar_puppet/" + f).then((r) => (r.ok ? r.json() : null)).catch(() => null);
     const [cfg, face, rx, ex] = await Promise.all([get("mouths.json"), get("face.json"), get("reactions.json"), get("expressions.json")]);
     if (!cfg?.shapes) return false;
-    const load = (f) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = "/avatar_puppet/" + f; });
+    // every image URL carries the asset version from the manifest: a rebuilt portrait is fetched fresh, never
+    // mixed with images cached from the previous one
+    const ver = cfg.version || ex?.version || Date.now().toString(36);
+    const load = (f) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = "/avatar_puppet/" + f + "?v=" + encodeURIComponent(ver); });
     try {
       PUP.base = await load("base.png");
       await Promise.all([...new Set(Object.values(cfg.shapes))].map(async (f) => { PUP.mouths[f] = await load(f); }));

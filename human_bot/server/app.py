@@ -88,6 +88,18 @@ class BodyTooLarge(Exception):
     pass
 
 
+def puppet_version() -> str:
+    """Changes whenever the portrait or any puppet layer is rebuilt (newest mtime across the asset folders)."""
+    base = HERE.parents[1] / "tran_moment"
+    newest = 0
+    for d in (base / "prepared", base / "path_b" / "mouths", base / "path_b" / "expressions", base / "path_b" / "reactions"):
+        if d.is_dir():
+            for f in d.iterdir():
+                if f.is_file():
+                    newest = max(newest, f.stat().st_mtime_ns)
+    return "%x" % (newest // 1_000_000)
+
+
 from llm.client import OfflineServiceBrain as _OSB  # noqa: E402
 KNOWN_CARS = frozenset(w for n in _OSB._MAKES + _OSB._MODELS for w in n.split()) | frozenset(
     ("glanza", "rumion", "taisor", "hyryder", "innova", "crysta", "fortuner", "hilux", "camry", "vellfire", "urban", "cruiser",
@@ -753,10 +765,24 @@ class Handler(BaseHTTPRequestHandler):
             if not f.is_file():
                 return self._json(404, {"error": "no such asset"})
             body = f.read_bytes()
+            if name.endswith(".json"):
+                # The manifests carry the asset version: the card appends ?v=<version> to every image URL, so
+                # a rebuilt portrait is never mixed with images a browser cached from the previous one
+                # (seen 2026-11-03: old base.png under new expression layers).
+                try:
+                    obj = json.loads(body.decode("utf-8"))
+                    obj["version"] = puppet_version()
+                    body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+                except ValueError:
+                    pass
             self.send_response(200)
             self.send_header("Content-Type", "image/png" if name.endswith(".png") else "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "public, max-age=3600")
+            if name.endswith(".json") or not parse_qs(urlparse(self.path).query).get("v"):
+                self.send_header("Cache-Control", "no-cache, must-revalidate")   # manifests and unversioned images: revalidate
+                self.send_header("ETag", '"%x-%x"' % (f.stat().st_mtime_ns, len(body)))
+            else:
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")  # versioned image URL
             self._cors()  # the voice widget on another origin reads face.json for its blink/mouth placement
             self.end_headers()
             return self.wfile.write(body)
@@ -801,8 +827,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self._cors()
             # Widget code and pages change often during development: make browsers revalidate on
-            # every load so a reload always shows the current card. Media stays cacheable.
-            if f.suffix in (".html", ".js", ".css"):
+            # every load so a reload always shows the current card. Media stays cacheable, except the
+            # portrait itself, which must follow a rebuild immediately.
+            if f.suffix in (".html", ".js", ".css") or path == "/avatar.jpg":
                 self.send_header("Cache-Control", "no-cache, must-revalidate")
                 self.send_header("ETag", '"%x-%x"' % (f.stat().st_mtime_ns, len(body)))
             else:
