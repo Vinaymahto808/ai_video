@@ -4,6 +4,7 @@
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DATA_DIR, ROOT_DIR, settings } from "./config.js";
+import { importBundleIfPresent } from "./qa_bundle.js";
 
 const seed = resolve(ROOT_DIR, "seed", "kb.sqlite");
 if (existsSync(settings.dbPath)) {
@@ -16,3 +17,6 @@ if (existsSync(settings.dbPath)) {
   copyFileSync(seed, settings.dbPath);
   console.log(`[seed] copied ${seed} -> ${settings.dbPath}`);
 }
+// Customer-call Q&A: not in the repo (internal data); a host carries it as a secret file / KB_QA_BUNDLE.
+const qa = importBundleIfPresent();
+if (qa) console.log(`[seed] qa bundle: ${qa.imported} imported, ${qa.unchanged} unchanged`);
