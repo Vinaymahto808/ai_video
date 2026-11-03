@@ -1225,16 +1225,24 @@
       speaking = false;
     }
 
+    // Watchdog: a reply that produces nothing for CHAT_STALL_MS (host restarting, proxy holding a dead
+    // connection, every model waiting on a timeout) is abandoned with a spoken-style apology and the card
+    // goes back to listening. Without it the card sat on "thinking" until the tab was closed.
+    const CHAT_STALL_MS = 20000;
+    const ctl = new AbortController(); let stall = setTimeout(() => ctl.abort(), CHAT_STALL_MS);
+    const alive = () => { clearTimeout(stall); stall = setTimeout(() => ctl.abort(), CHAT_STALL_MS); };
     try {
       const res = await fetch("/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: state.sid, text })
+        body: JSON.stringify({ session_id: state.sid, text }), signal: ctl.signal
       });
+      if (!res.ok || !res.body) throw new Error("chat " + res.status);
       const reader = res.body.getReader(); const dec = new TextDecoder();
       let buf = "", bot = null;
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
+        alive();
         buf += dec.decode(value, { stream: true });
         let i;
         while ((i = buf.indexOf("\n\n")) >= 0) {
@@ -1259,9 +1267,11 @@
           if (ev === "error") { typing(false); add("Sorry, ek second rukiye.", "bot"); }
         }
       }
+      clearTimeout(stall);
       await drain();
     } catch (e) {
-      typing(false); add("Connection slow hai, ek baar phir bhejiye.", "bot");
+      clearTimeout(stall);
+      typing(false); add("Connection slow hai, ek baar phir bhejiye.", "bot"); setStatus("ready", true);
     }
     state.busy = false;
     if (state.active) listen();

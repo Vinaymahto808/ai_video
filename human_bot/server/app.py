@@ -813,7 +813,11 @@ class Handler(BaseHTTPRequestHandler):
                     "crm": OUTBOX.status() if OUTBOX else {"sink": None, "note": "recording off"},
                     "leads": {"mode": acr_leads.mode(), "url": acr_leads.LEADS_URL, "dry_runs": len(acr_leads.LOG)},
                 })
-            return self._json(200 if body["ok"] else 503, body)
+            # Always 200: "degraded" is information for the operator, not a reason for a host's health check
+            # to kill the process (Render restarted the bot mid-conversation every time the free LLM keys hit
+            # 429, which the offline script covers anyway). ?strict=1 keeps the 503 for a monitoring probe.
+            strict = (parse_qs(urlparse(self.path).query).get("strict") or ["0"])[0] in ("1", "true")
+            return self._json(503 if strict and not body["ok"] else 200, body)
         if path == "/conversations" or path.startswith("/conversations/"):
             return self._conversations(path)
         if path == "/personas":
