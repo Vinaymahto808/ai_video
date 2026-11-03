@@ -55,6 +55,9 @@ SOURCES = {
     "open_palm":  {"path": CLIPS / "open_palm.mp4",  "half": True},
     "greeting":   {"path": CLIPS / "greeting.mp4",   "half": True},
     "presenter":  {"path": LONG, "half": False, "start_s": 0.0, "end_s": 55.0, "crop_track": True},
+    # 2026-11-03: AI-rendered clip of the current (grid) Neha talking to camera, 478x850 @ 24 fps, 10 s.
+    # Same face as the puppet, big and well lit: the best source for her own head motion and idle rhythm.
+    "neha_sample": {"path": TM.parent / "voice_clone" / "src" / "sample.mp4", "half": False, "start_s": 0.0, "end_s": 10.1, "crop_track": False},
 }
 
 
@@ -207,7 +210,7 @@ def extract(name: str, spec: dict, landmarker_factory) -> dict | None:
     took = time.time() - t0
     print(f"  {name:11s} {n:5d} frames @ {fps:.0f} fps, {misses} misses, {took:.1f}s ({n / max(took, 1e-6):.0f} fps)")
     return {
-        "name": name, "source": str(path.relative_to(TM)), "fps": fps, "width": width, "height": height,
+        "name": name, "source": str(path.relative_to(TM) if path.is_relative_to(TM) else path.relative_to(TM.parent)), "fps": fps, "width": width, "height": height,
         "frame_range": [start_f, start_f + n], "ping_pong_half": bool(spec.get("half")),
         "detected": n - misses, "missed": misses, "frames": frames,
         "units": {"pitch": "deg (chin down > 0)", "yaw": "deg", "roll": "deg", "dx": "% frame width from frame 0",

@@ -231,6 +231,7 @@
   .composer:not(.text) .send { display:none; }
   .who span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px; }
 </style>
+<link rel="stylesheet" href="/learned_gestures.css">  <!-- gesture curves learned from footage (tran_moment/motion/export_css.py); overrides the hand-written g-* keyframes above -->
 </head>
 <body class="pre">
 <div class="stage" id="stage">
@@ -650,6 +651,17 @@
     const seq = ["A.png", "E.png", "X.png", "O.png", "I.png", "closed.png", "A.png", "U.png", "L.png", "E.png"];
     let i = 0; PUP.fake = setInterval(() => { PUP.mouth = seq[i++ % seq.length]; }, 110);
   }
+  /* which "takes" the learned stylesheet defines (.gest.g-nod.v2 ...), read once from its rules */
+  const LEARNED_TAKES = new Set();
+  (function scanLearned() {
+    try {
+      for (const sheet of document.styleSheets) {
+        if (!(sheet.href || "").includes("learned_gestures")) continue;
+        for (const r of sheet.cssRules) { const m = /\.gest\.(g-[a-z]+)\.(v\d)/.exec(r.selectorText || ""); if (m) LEARNED_TAKES.add(m[1] + "." + m[2]); }
+      }
+    } catch (e) { /* stylesheet not loaded yet or cross-origin: single take */ }
+    if (!LEARNED_TAKES.size && document.readyState !== "complete") window.addEventListener("load", scanLearned, { once: true });
+  })();
   function gesturePuppet(state, gesture, emotion, text) {
     setReaction(state, emotion, text);
     const g = $("gest");
@@ -661,7 +673,16 @@
       AV.state = state; AV.curName = "puppet:" + cls; return;
     }
     [...g.classList].filter((c) => c.startsWith("g-")).forEach((c) => g.classList.remove(c));
-    if (cls) { void g.offsetWidth; g.classList.add(cls); AV.gestAt = now; }
+    if (cls) {
+      void g.offsetWidth; g.classList.add(cls); AV.gestAt = now;
+      // learned_gestures.css may define takes v2/v3 of this gesture (mined from footage): never the same take twice
+      [...g.classList].filter((c) => /^v\d$/.test(c)).forEach((c) => g.classList.remove(c));
+      const takes = [1, 2, 3, 4, 5, 6].filter((k) => k === 1 || LEARNED_TAKES.has(cls + ".v" + k));
+      let take = takes[Math.floor(Math.random() * takes.length)];
+      if (takes.length > 1 && take === AV.lastTake?.[cls]) take = takes[(takes.indexOf(take) + 1) % takes.length];
+      (AV.lastTake ||= {})[cls] = take;
+      if (take > 1) g.classList.add("v" + take);
+    }
     AV.state = state; AV.curName = "puppet:" + (cls || "idle");
     const next = ONE_SHOT_TO[state];
     if (next && cls) g.addEventListener("animationend", () => { if (AV.state === state) gesturePuppet(next); }, { once: true });

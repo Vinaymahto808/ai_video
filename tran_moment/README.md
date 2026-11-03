@@ -67,3 +67,17 @@ images are piecewise-affine warped (Delaunay triangles) to each in-between shape
 per ~1.5 px of the largest landmark move (6-24 frames, ~1 MB of WebP in total). The card plays the
 sequence forward to show an expression (~260 ms) and backward to relax it; a blink is eyes_closed forward
 (70 ms) then back (90 ms); a new expression waits for the previous one to relax, so the face never jumps.
+
+### Training body motion from a video of the current face (2026-11-03)
+
+`voice_clone/src/sample.mp4` (10 s, AI-rendered, this Neha talking to camera) is registered as the
+`neha_sample` source in `motion/extract_motion.py`:
+
+```
+python tran_moment/motion/extract_motion.py --only neha_sample   # MediaPipe pose curves -> motion/tracks/neha_sample.json
+python tran_moment/motion/fit_gestures.py                        # gestures + variants + idle stats -> avatar_widget/src/motion-data.js
+python tran_moment/motion/export_css.py                          # same curves as CSS keyframes -> human_bot/web/learned_gestures.css
+```
+The card loads `learned_gestures.css` after its hand-written keyframes, so every gesture class
+(`g-nod`, `g-tilt`, `g-wobble`, ...) now plays a curve learned from footage, with up to six takes per
+gesture chosen at random. More footage of her (longer, calmer, no cuts) improves the idle statistics most.

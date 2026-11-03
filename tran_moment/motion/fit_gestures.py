@@ -74,7 +74,7 @@ MINED = {
 REST = {"idle": 800, "pause": 600, "freeze": 120}
 # How many extra takes to mine per gesture (exported as name__v2, name__v3 for random variation).
 VARIANTS = {"nod": 2, "small_nod": 2, "slow_nod": 1, "head_wobble": 2, "tilt_head": 1, "look_up": 1}
-MINE_SOURCES = ["presenter", "open_palm", "greeting", "idle", "both_hands", "slow_nod", "small_nod", "look_up"]
+MINE_SOURCES = ["neha_sample", "presenter", "open_palm", "greeting", "idle", "both_hands", "slow_nod", "small_nod", "look_up"]
 
 # Window quality gates: the wide shot has a ~33 px face, so tracking spikes must be rejected.
 MIN_FACE_PX = 24
@@ -411,7 +411,7 @@ def idle_stats(tracks: dict[str, dict | None]) -> dict:
 
 # ---------------------------------------------------------------- main
 def main() -> int:
-    tracks = {n: load(n) for n in ["idle", "small_nod", "slow_nod", "look_up", "both_hands", "open_palm", "greeting", "presenter"]}
+    tracks = {n: load(n) for n in ["neha_sample", "idle", "small_nod", "slow_nod", "look_up", "both_hands", "open_palm", "greeting", "presenter"]}
     missing = [n for n, t in tracks.items() if t is None]
     if missing:
         print("missing tracks:", ", ".join(missing), "(run extract_motion.py)")
