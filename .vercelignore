@@ -1,6 +1,8 @@
-# Vercel project "avatar_widget" has Root Directory = avatar_widget. Deploy with `vercel deploy --prod --yes`
-# from the repo root; only the widget folder is uploaded (bot, kb, clips, recordings and secrets stay out).
+# Vercel hosts the static landing page (index.html) and the widget (avatar_widget/). Project Root Directory is
+# the repo root; deploy with `vercel deploy --prod --yes` from here. The bot and kb run on Render / a VPS.
 /*
+!/index.html
+!/vercel.json
 !/avatar_widget
 /avatar_widget/evidence
 /avatar_widget/test

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/avatar_widget/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/widget", "destination": "/avatar_widget/demo.html" },
+    { "source": "/demo", "destination": "/avatar_widget/demo.html" }
+  ]
+}
