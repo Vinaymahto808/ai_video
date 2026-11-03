@@ -1,0 +1,321 @@
+{
+ "text": "Aap bilkul chinta mat kijiye. Pickup free hai. Hamari team Gurgaon mein aapke ghar se gaadi le jaayegi, aur shaam tak wapas pahuncha degi.",
+ "duration": 13.752,
+ "mouthCues": [
+  {
+   "start": 0.0,
+   "end": 0.215,
+   "value": "X"
+  },
+  {
+   "start": 0.215,
+   "end": 0.478,
+   "value": "C"
+  },
+  {
+   "start": 0.478,
+   "end": 0.723,
+   "value": "A"
+  },
+  {
+   "start": 0.723,
+   "end": 0.824,
+   "value": "D"
+  },
+  {
+   "start": 0.824,
+   "end": 0.924,
+   "value": "H"
+  },
+  {
+   "start": 0.924,
+   "end": 1.025,
+   "value": "G"
+  },
+  {
+   "start": 1.025,
+   "end": 1.125,
+   "value": "H"
+  },
+  {
+   "start": 1.139,
+   "end": 1.244,
+   "value": "B"
+  },
+  {
+   "start": 1.244,
+   "end": 1.35,
+   "value": "D"
+  },
+  {
+   "start": 1.35,
+   "end": 1.455,
+   "value": "B"
+  },
+  {
+   "start": 1.455,
+   "end": 1.56,
+   "value": "C"
+  },
+  {
+   "start": 1.574,
+   "end": 1.691,
+   "value": "A"
+  },
+  {
+   "start": 1.691,
+   "end": 1.809,
+   "value": "C"
+  },
+  {
+   "start": 1.809,
+   "end": 1.927,
+   "value": "B"
+  },
+  {
+   "start": 1.941,
+   "end": 2.049,
+   "value": "C"
+  },
+  {
+   "start": 2.049,
+   "end": 2.158,
+   "value": "D"
+  },
+  {
+   "start": 2.158,
+   "end": 2.267,
+   "value": "B"
+  },
+  {
+   "start": 2.267,
+   "end": 2.484,
+   "value": "D"
+  },
+  {
+   "start": 2.484,
+   "end": 2.593,
+   "value": "B"
+  },
+  {
+   "start": 2.593,
+   "end": 3.535,
+   "value": "X"
+  },
+  {
+   "start": 3.535,
+   "end": 3.646,
+   "value": "A"
+  },
+  {
+   "start": 3.646,
+   "end": 3.757,
+   "value": "D"
+  },
+  {
+   "start": 3.757,
+   "end": 3.869,
+   "value": "B"
+  },
+  {
+   "start": 3.869,
+   "end": 3.98,
+   "value": "G"
+  },
+  {
+   "start": 3.98,
+   "end": 4.092,
+   "value": "A"
+  },
+  {
+   "start": 4.105,
+   "end": 4.2,
+   "value": "G"
+  },
+  {
+   "start": 4.2,
+   "end": 4.391,
+   "value": "B"
+  },
+  {
+   "start": 4.404,
+   "end": 4.585,
+   "value": "C"
+  },
+  {
+   "start": 4.585,
+   "end": 4.676,
+   "value": "D"
+  },
+  {
+   "start": 4.676,
+   "end": 5.613,
+   "value": "X"
+  },
+  {
+   "start": 5.613,
+   "end": 5.831,
+   "value": "C"
+  },
+  {
+   "start": 5.831,
+   "end": 5.939,
+   "value": "A"
+  },
+  {
+   "start": 5.939,
+   "end": 6.048,
+   "value": "C"
+  },
+  {
+   "start": 6.048,
+   "end": 6.157,
+   "value": "B"
+  },
+  {
+   "start": 6.157,
+   "end": 6.619,
+   "value": "D"
+  },
+  {
+   "start": 6.632,
+   "end": 6.73,
+   "value": "C"
+  },
+  {
+   "start": 6.73,
+   "end": 6.827,
+   "value": "G"
+  },
+  {
+   "start": 6.827,
+   "end": 6.925,
+   "value": "B"
+  },
+  {
+   "start": 6.925,
+   "end": 7.022,
+   "value": "C"
+  },
+  {
+   "start": 7.022,
+   "end": 7.119,
+   "value": "F"
+  },
+  {
+   "start": 7.119,
+   "end": 7.529,
+   "value": "B"
+  },
+  {
+   "start": 7.543,
+   "end": 7.808,
+   "value": "C"
+  },
+  {
+   "start": 7.808,
+   "end": 7.94,
+   "value": "A"
+  },
+  {
+   "start": 7.94,
+   "end": 9.037,
+   "value": "B"
+  },
+  {
+   "start": 9.051,
+   "end": 9.153,
+   "value": "H"
+  },
+  {
+   "start": 9.153,
+   "end": 9.383,
+   "value": "B"
+  },
+  {
+   "start": 9.383,
+   "end": 9.612,
+   "value": "C"
+  },
+  {
+   "start": 9.612,
+   "end": 9.726,
+   "value": "D"
+  },
+  {
+   "start": 9.726,
+   "end": 9.841,
+   "value": "B"
+  },
+  {
+   "start": 9.841,
+   "end": 9.955,
+   "value": "C"
+  },
+  {
+   "start": 9.955,
+   "end": 10.07,
+   "value": "D"
+  },
+  {
+   "start": 10.07,
+   "end": 10.545,
+   "value": "X"
+  },
+  {
+   "start": 10.559,
+   "end": 10.664,
+   "value": "B"
+  },
+  {
+   "start": 10.664,
+   "end": 10.875,
+   "value": "C"
+  },
+  {
+   "start": 10.875,
+   "end": 11.225,
+   "value": "A"
+  },
+  {
+   "start": 11.238,
+   "end": 11.342,
+   "value": "F"
+  },
+  {
+   "start": 11.342,
+   "end": 11.445,
+   "value": "C"
+  },
+  {
+   "start": 11.445,
+   "end": 11.548,
+   "value": "A"
+  },
+  {
+   "start": 11.548,
+   "end": 11.651,
+   "value": "C"
+  },
+  {
+   "start": 11.651,
+   "end": 12.57,
+   "value": "B"
+  },
+  {
+   "start": 12.57,
+   "end": 12.74,
+   "value": "C"
+  },
+  {
+   "start": 12.74,
+   "end": 12.91,
+   "value": "D"
+  },
+  {
+   "start": 12.91,
+   "end": 13.867,
+   "value": "X"
+  }
+ ]
+}

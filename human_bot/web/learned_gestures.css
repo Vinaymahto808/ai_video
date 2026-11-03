@@ -3,305 +3,305 @@
    so these override them. Do not edit by hand. */
 @keyframes l_small_nod {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.12%, 0.40%) rotate(1.24deg) scale(1.0049); }
-  16.7% { transform: translate(-0.41%, 1.24%) rotate(1.02deg) scale(0.9951); }
-  25.0% { transform: translate(-0.79%, 1.93%) rotate(0.57deg) scale(0.9950); }
-  33.3% { transform: translate(-1.16%, 1.81%) rotate(0.01deg) scale(0.9950); }
-  41.7% { transform: translate(-1.42%, 0.99%) rotate(-0.54deg) scale(0.9950); }
-  50.0% { transform: translate(-1.49%, 0.52%) rotate(-0.97deg) scale(0.9950); }
-  58.3% { transform: translate(-1.24%, 0.60%) rotate(-1.14deg) scale(0.9950); }
-  66.7% { transform: translate(-0.77%, 0.55%) rotate(-1.03deg) scale(0.9950); }
-  75.0% { transform: translate(-0.26%, 0.09%) rotate(-0.75deg) scale(0.9950); }
-  83.3% { transform: translate(0.13%, -0.26%) rotate(-0.41deg) scale(0.9950); }
-  91.7% { transform: translate(0.22%, -0.19%) rotate(-0.12deg) scale(0.9950); }
+  8.3% { transform: translate(-0.04%, 0.15%) rotate(0.46deg) scale(1.0018); }
+  16.7% { transform: translate(-0.15%, 0.45%) rotate(0.38deg) scale(0.9982); }
+  25.0% { transform: translate(-0.29%, 0.71%) rotate(0.21deg) scale(0.9982); }
+  33.3% { transform: translate(-0.42%, 0.66%) rotate(0.00deg) scale(0.9982); }
+  41.7% { transform: translate(-0.52%, 0.36%) rotate(-0.20deg) scale(0.9982); }
+  50.0% { transform: translate(-0.55%, 0.19%) rotate(-0.35deg) scale(0.9982); }
+  58.3% { transform: translate(-0.46%, 0.22%) rotate(-0.42deg) scale(0.9982); }
+  66.7% { transform: translate(-0.28%, 0.20%) rotate(-0.38deg) scale(0.9982); }
+  75.0% { transform: translate(-0.09%, 0.03%) rotate(-0.27deg) scale(0.9982); }
+  83.3% { transform: translate(0.05%, -0.10%) rotate(-0.15deg) scale(0.9982); }
+  91.7% { transform: translate(0.08%, -0.07%) rotate(-0.04deg) scale(0.9982); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_look_up {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.36%, -0.49%) rotate(-0.09deg) scale(0.9950); }
-  16.7% { transform: translate(-1.04%, -1.45%) rotate(-0.33deg) scale(0.9950); }
-  25.0% { transform: translate(-1.49%, -2.07%) rotate(-0.67deg) scale(0.9950); }
-  33.3% { transform: translate(-1.43%, -1.84%) rotate(-1.06deg) scale(0.9950); }
-  41.7% { transform: translate(-1.20%, -1.22%) rotate(-1.45deg) scale(0.9950); }
-  50.0% { transform: translate(-0.88%, -0.68%) rotate(-1.80deg) scale(0.9950); }
-  58.3% { transform: translate(-0.51%, -0.52%) rotate(-2.07deg) scale(0.9950); }
-  66.7% { transform: translate(-0.17%, -0.43%) rotate(-2.19deg) scale(1.0024); }
-  75.0% { transform: translate(0.09%, -0.34%) rotate(-1.95deg) scale(1.0106); }
-  83.3% { transform: translate(0.20%, -0.18%) rotate(-1.19deg) scale(1.0228); }
-  91.7% { transform: translate(0.11%, -0.05%) rotate(-0.38deg) scale(1.0124); }
+  8.3% { transform: translate(-0.14%, -0.25%) rotate(-0.07deg) scale(0.9961); }
+  16.7% { transform: translate(-0.42%, -0.73%) rotate(-0.24deg) scale(0.9961); }
+  25.0% { transform: translate(-0.60%, -1.04%) rotate(-0.48deg) scale(0.9961); }
+  33.3% { transform: translate(-0.57%, -0.95%) rotate(-0.77deg) scale(0.9961); }
+  41.7% { transform: translate(-0.48%, -0.66%) rotate(-1.06deg) scale(0.9961); }
+  50.0% { transform: translate(-0.35%, -0.40%) rotate(-1.31deg) scale(0.9961); }
+  58.3% { transform: translate(-0.20%, -0.28%) rotate(-1.51deg) scale(0.9961); }
+  66.7% { transform: translate(-0.07%, -0.19%) rotate(-1.60deg) scale(1.0018); }
+  75.0% { transform: translate(0.04%, -0.12%) rotate(-1.42deg) scale(1.0082); }
+  83.3% { transform: translate(0.08%, -0.04%) rotate(-0.87deg) scale(1.0177); }
+  91.7% { transform: translate(0.04%, -0.00%) rotate(-0.28deg) scale(1.0096); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_both_hands {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.78%, -0.24%) rotate(-1.88deg) scale(1.0120); }
-  16.7% { transform: translate(1.50%, -0.82%) rotate(-3.60deg) scale(1.0099); }
-  25.0% { transform: translate(1.37%, -1.55%) rotate(-3.35deg) scale(1.0105); }
-  33.3% { transform: translate(1.04%, -2.20%) rotate(-2.77deg) scale(1.0205); }
-  41.7% { transform: translate(0.62%, -2.59%) rotate(-1.98deg) scale(1.0248); }
-  50.0% { transform: translate(0.16%, -2.51%) rotate(-1.15deg) scale(1.0044); }
-  58.3% { transform: translate(-0.24%, -1.97%) rotate(-0.41deg) scale(1.0144); }
-  66.7% { transform: translate(-0.52%, -1.19%) rotate(0.09deg) scale(1.0114); }
-  75.0% { transform: translate(-0.58%, -0.40%) rotate(0.22deg) scale(0.9952); }
-  83.3% { transform: translate(-0.40%, 0.13%) rotate(0.15deg) scale(0.9962); }
-  91.7% { transform: translate(-0.13%, 0.22%) rotate(0.05deg) scale(0.9986); }
+  8.3% { transform: translate(0.31%, -0.10%) rotate(-0.83deg) scale(1.0092); }
+  16.7% { transform: translate(0.60%, -0.34%) rotate(-1.60deg) scale(1.0076); }
+  25.0% { transform: translate(0.55%, -0.64%) rotate(-1.49deg) scale(1.0080); }
+  33.3% { transform: translate(0.42%, -0.91%) rotate(-1.23deg) scale(1.0158); }
+  41.7% { transform: translate(0.25%, -1.07%) rotate(-0.88deg) scale(1.0190); }
+  50.0% { transform: translate(0.06%, -1.04%) rotate(-0.51deg) scale(1.0034); }
+  58.3% { transform: translate(-0.10%, -0.82%) rotate(-0.18deg) scale(1.0111); }
+  66.7% { transform: translate(-0.21%, -0.49%) rotate(0.04deg) scale(1.0088); }
+  75.0% { transform: translate(-0.23%, -0.17%) rotate(0.10deg) scale(0.9963); }
+  83.3% { transform: translate(-0.16%, 0.05%) rotate(0.07deg) scale(0.9971); }
+  91.7% { transform: translate(-0.05%, 0.09%) rotate(0.02deg) scale(0.9990); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_open_palm {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.39%, 0.20%) rotate(1.33deg) scale(0.9950); }
-  16.7% { transform: translate(-1.00%, 0.69%) rotate(1.98deg) scale(0.9950); }
-  25.0% { transform: translate(-1.00%, 1.32%) rotate(1.11deg) scale(0.9950); }
-  33.3% { transform: translate(-0.28%, 1.93%) rotate(-0.25deg) scale(0.9950); }
-  41.7% { transform: translate(0.67%, 2.36%) rotate(-1.44deg) scale(1.0227); }
-  50.0% { transform: translate(1.39%, 2.42%) rotate(-1.72deg) scale(0.9960); }
-  58.3% { transform: translate(1.36%, 1.99%) rotate(1.96deg) scale(1.0217); }
-  66.7% { transform: translate(0.56%, 0.79%) rotate(3.54deg) scale(1.0074); }
-  75.0% { transform: translate(-0.17%, -0.83%) rotate(2.79deg) scale(1.0004); }
-  83.3% { transform: translate(-0.20%, -1.02%) rotate(1.59deg) scale(1.0136); }
-  91.7% { transform: translate(-0.07%, -0.40%) rotate(0.49deg) scale(1.0152); }
+  8.3% { transform: translate(-0.16%, 0.08%) rotate(0.53deg) scale(0.9980); }
+  16.7% { transform: translate(-0.40%, 0.28%) rotate(0.79deg) scale(0.9980); }
+  25.0% { transform: translate(-0.40%, 0.53%) rotate(0.44deg) scale(0.9980); }
+  33.3% { transform: translate(-0.11%, 0.77%) rotate(-0.10deg) scale(0.9980); }
+  41.7% { transform: translate(0.27%, 0.95%) rotate(-0.58deg) scale(1.0091); }
+  50.0% { transform: translate(0.55%, 0.97%) rotate(-0.69deg) scale(0.9984); }
+  58.3% { transform: translate(0.54%, 0.80%) rotate(0.78deg) scale(1.0087); }
+  66.7% { transform: translate(0.22%, 0.32%) rotate(1.42deg) scale(1.0030); }
+  75.0% { transform: translate(-0.07%, -0.33%) rotate(1.12deg) scale(1.0002); }
+  83.3% { transform: translate(-0.08%, -0.41%) rotate(0.64deg) scale(1.0055); }
+  91.7% { transform: translate(-0.03%, -0.16%) rotate(0.19deg) scale(1.0061); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_greeting {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.34%, 0.32%) rotate(0.30deg) scale(0.9950); }
-  16.7% { transform: translate(1.01%, 1.03%) rotate(1.03deg) scale(0.9950); }
-  25.0% { transform: translate(1.48%, 1.80%) rotate(1.95deg) scale(0.9950); }
-  33.3% { transform: translate(1.27%, 2.22%) rotate(2.84deg) scale(0.9950); }
-  41.7% { transform: translate(0.52%, 1.45%) rotate(3.46deg) scale(0.9950); }
-  50.0% { transform: translate(-0.28%, 1.83%) rotate(3.55deg) scale(0.9950); }
-  58.3% { transform: translate(-0.64%, 2.16%) rotate(2.89deg) scale(0.9950); }
-  66.7% { transform: translate(-0.57%, 2.08%) rotate(1.79deg) scale(0.9950); }
-  75.0% { transform: translate(-0.41%, 0.35%) rotate(0.64deg) scale(0.9950); }
-  83.3% { transform: translate(-0.22%, -0.96%) rotate(-0.14deg) scale(0.9950); }
-  91.7% { transform: translate(-0.07%, -0.67%) rotate(-0.21deg) scale(0.9950); }
+  8.3% { transform: translate(0.14%, 0.13%) rotate(0.13deg) scale(0.9978); }
+  16.7% { transform: translate(0.40%, 0.43%) rotate(0.44deg) scale(0.9978); }
+  25.0% { transform: translate(0.59%, 0.75%) rotate(0.85deg) scale(0.9978); }
+  33.3% { transform: translate(0.51%, 0.93%) rotate(1.23deg) scale(0.9978); }
+  41.7% { transform: translate(0.21%, 0.62%) rotate(1.50deg) scale(0.9978); }
+  50.0% { transform: translate(-0.11%, 0.78%) rotate(1.54deg) scale(0.9978); }
+  58.3% { transform: translate(-0.26%, 0.92%) rotate(1.25deg) scale(0.9978); }
+  66.7% { transform: translate(-0.23%, 0.87%) rotate(0.78deg) scale(0.9978); }
+  75.0% { transform: translate(-0.17%, 0.15%) rotate(0.28deg) scale(0.9978); }
+  83.3% { transform: translate(-0.09%, -0.40%) rotate(-0.06deg) scale(0.9978); }
+  91.7% { transform: translate(-0.03%, -0.29%) rotate(-0.09deg) scale(0.9978); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_nod {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.05%, 0.08%) rotate(0.24deg) scale(0.9957); }
-  16.7% { transform: translate(0.06%, 0.28%) rotate(0.83deg) scale(0.9950); }
-  25.0% { transform: translate(-0.08%, 0.66%) rotate(1.57deg) scale(0.9950); }
-  33.3% { transform: translate(-0.31%, 1.19%) rotate(2.26deg) scale(0.9950); }
-  41.7% { transform: translate(-0.55%, 1.53%) rotate(2.68deg) scale(0.9950); }
-  50.0% { transform: translate(-0.72%, 1.43%) rotate(2.47deg) scale(0.9950); }
-  58.3% { transform: translate(-0.73%, 1.07%) rotate(0.92deg) scale(0.9950); }
-  66.7% { transform: translate(-0.61%, 0.78%) rotate(-1.21deg) scale(0.9950); }
-  75.0% { transform: translate(-0.43%, 0.43%) rotate(-3.02deg) scale(0.9958); }
-  83.3% { transform: translate(-0.23%, 0.12%) rotate(-3.53deg) scale(0.9997); }
-  91.7% { transform: translate(-0.07%, 0.01%) rotate(-1.57deg) scale(1.0062); }
+  8.3% { transform: translate(0.03%, 0.04%) rotate(0.11deg) scale(0.9977); }
+  16.7% { transform: translate(0.03%, 0.15%) rotate(0.37deg) scale(0.9973); }
+  25.0% { transform: translate(-0.04%, 0.35%) rotate(0.70deg) scale(0.9973); }
+  33.3% { transform: translate(-0.17%, 0.64%) rotate(1.00deg) scale(0.9973); }
+  41.7% { transform: translate(-0.29%, 0.82%) rotate(1.19deg) scale(0.9973); }
+  50.0% { transform: translate(-0.38%, 0.76%) rotate(1.10deg) scale(0.9973); }
+  58.3% { transform: translate(-0.39%, 0.57%) rotate(0.41deg) scale(0.9973); }
+  66.7% { transform: translate(-0.33%, 0.42%) rotate(-0.54deg) scale(0.9973); }
+  75.0% { transform: translate(-0.23%, 0.23%) rotate(-1.34deg) scale(0.9977); }
+  83.3% { transform: translate(-0.12%, 0.07%) rotate(-1.57deg) scale(0.9999); }
+  91.7% { transform: translate(-0.04%, 0.00%) rotate(-0.70deg) scale(1.0033); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_slow_nod {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.06%, 0.09%) rotate(-1.33deg) scale(1.0144); }
-  16.7% { transform: translate(-0.00%, 0.79%) rotate(-1.92deg) scale(1.0141); }
-  25.0% { transform: translate(0.01%, 1.65%) rotate(-1.65deg) scale(0.9950); }
-  33.3% { transform: translate(-0.01%, 2.23%) rotate(-1.15deg) scale(0.9952); }
-  41.7% { transform: translate(-0.03%, 2.38%) rotate(-0.50deg) scale(0.9957); }
-  50.0% { transform: translate(-0.05%, 2.26%) rotate(0.23deg) scale(0.9962); }
-  58.3% { transform: translate(-0.00%, 1.92%) rotate(0.96deg) scale(0.9967); }
-  66.7% { transform: translate(0.14%, 1.45%) rotate(1.61deg) scale(0.9970); }
-  75.0% { transform: translate(0.13%, 0.94%) rotate(2.11deg) scale(1.0096); }
-  83.3% { transform: translate(0.11%, 0.47%) rotate(2.38deg) scale(0.9995); }
-  91.7% { transform: translate(0.14%, 0.13%) rotate(1.65deg) scale(1.0111); }
+  8.3% { transform: translate(-0.03%, 0.04%) rotate(-0.67deg) scale(1.0072); }
+  16.7% { transform: translate(-0.00%, 0.36%) rotate(-0.96deg) scale(1.0071); }
+  25.0% { transform: translate(0.01%, 0.76%) rotate(-0.82deg) scale(0.9975); }
+  33.3% { transform: translate(-0.00%, 1.03%) rotate(-0.58deg) scale(0.9976); }
+  41.7% { transform: translate(-0.02%, 1.12%) rotate(-0.25deg) scale(0.9978); }
+  50.0% { transform: translate(-0.02%, 1.06%) rotate(0.11deg) scale(0.9981); }
+  58.3% { transform: translate(-0.00%, 0.90%) rotate(0.48deg) scale(0.9983); }
+  66.7% { transform: translate(0.07%, 0.69%) rotate(0.80deg) scale(0.9985); }
+  75.0% { transform: translate(0.06%, 0.45%) rotate(1.05deg) scale(1.0048); }
+  83.3% { transform: translate(0.05%, 0.22%) rotate(1.19deg) scale(0.9997); }
+  91.7% { transform: translate(0.07%, 0.06%) rotate(0.82deg) scale(1.0055); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_head_wobble {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.17%, -0.31%) rotate(0.92deg) scale(0.9950); }
-  16.7% { transform: translate(0.50%, 0.31%) rotate(2.53deg) scale(1.0187); }
-  25.0% { transform: translate(0.72%, 0.36%) rotate(3.12deg) scale(1.0296); }
-  33.3% { transform: translate(0.68%, -0.83%) rotate(1.15deg) scale(1.0027); }
-  41.7% { transform: translate(0.57%, -1.30%) rotate(-1.82deg) scale(0.9950); }
-  50.0% { transform: translate(0.51%, -0.91%) rotate(-3.35deg) scale(0.9950); }
-  58.3% { transform: translate(0.51%, -0.26%) rotate(-3.10deg) scale(0.9950); }
-  66.7% { transform: translate(0.51%, 0.41%) rotate(-2.48deg) scale(1.0066); }
-  75.0% { transform: translate(0.48%, 0.81%) rotate(-1.68deg) scale(1.0141); }
-  83.3% { transform: translate(0.27%, 0.68%) rotate(-0.87deg) scale(1.0090); }
-  91.7% { transform: translate(0.05%, 0.21%) rotate(-0.25deg) scale(1.0029); }
+  8.3% { transform: translate(0.09%, -0.11%) rotate(0.49deg) scale(0.9973); }
+  16.7% { transform: translate(0.27%, 0.20%) rotate(1.36deg) scale(1.0100); }
+  25.0% { transform: translate(0.39%, 0.20%) rotate(1.68deg) scale(1.0159); }
+  33.3% { transform: translate(0.37%, -0.36%) rotate(0.62deg) scale(1.0014); }
+  41.7% { transform: translate(0.31%, -0.55%) rotate(-0.98deg) scale(0.9973); }
+  50.0% { transform: translate(0.27%, -0.37%) rotate(-1.80deg) scale(0.9973); }
+  58.3% { transform: translate(0.27%, -0.07%) rotate(-1.67deg) scale(0.9973); }
+  66.7% { transform: translate(0.28%, 0.24%) rotate(-1.33deg) scale(1.0036); }
+  75.0% { transform: translate(0.26%, 0.40%) rotate(-0.90deg) scale(1.0076); }
+  83.3% { transform: translate(0.14%, 0.32%) rotate(-0.47deg) scale(1.0049); }
+  91.7% { transform: translate(0.03%, 0.09%) rotate(-0.13deg) scale(1.0016); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_tilt_head {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.21%, -0.16%) rotate(0.45deg) scale(1.0283); }
-  16.7% { transform: translate(-0.60%, -0.44%) rotate(1.50deg) scale(1.0400); }
-  25.0% { transform: translate(-0.82%, -0.52%) rotate(2.67deg) scale(1.0400); }
-  33.3% { transform: translate(-0.75%, -0.20%) rotate(3.48deg) scale(1.0391); }
-  41.7% { transform: translate(-0.58%, 0.33%) rotate(3.55deg) scale(1.0248); }
-  50.0% { transform: translate(-0.36%, 0.81%) rotate(3.23deg) scale(1.0140); }
-  58.3% { transform: translate(-0.12%, 1.01%) rotate(2.67deg) scale(1.0086); }
-  66.7% { transform: translate(0.09%, 0.95%) rotate(1.98deg) scale(1.0015); }
-  75.0% { transform: translate(0.24%, 0.70%) rotate(1.27deg) scale(1.0031); }
-  83.3% { transform: translate(0.27%, 0.30%) rotate(0.63deg) scale(1.0080); }
-  91.7% { transform: translate(0.11%, 0.03%) rotate(0.17deg) scale(1.0067); }
+  8.3% { transform: translate(-0.13%, -0.10%) rotate(0.28deg) scale(1.0141); }
+  16.7% { transform: translate(-0.37%, -0.27%) rotate(0.92deg) scale(1.0200); }
+  25.0% { transform: translate(-0.50%, -0.32%) rotate(1.63deg) scale(1.0200); }
+  33.3% { transform: translate(-0.46%, -0.12%) rotate(2.12deg) scale(1.0195); }
+  41.7% { transform: translate(-0.36%, 0.20%) rotate(2.17deg) scale(1.0124); }
+  50.0% { transform: translate(-0.22%, 0.50%) rotate(1.97deg) scale(1.0070); }
+  58.3% { transform: translate(-0.07%, 0.62%) rotate(1.63deg) scale(1.0043); }
+  66.7% { transform: translate(0.06%, 0.58%) rotate(1.21deg) scale(1.0007); }
+  75.0% { transform: translate(0.15%, 0.43%) rotate(0.77deg) scale(1.0015); }
+  83.3% { transform: translate(0.16%, 0.18%) rotate(0.39deg) scale(1.0040); }
+  91.7% { transform: translate(0.07%, 0.02%) rotate(0.11deg) scale(1.0033); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_lean_in {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.03%, 0.12%) rotate(-0.38deg) scale(1.0332); }
-  16.7% { transform: translate(0.05%, 0.01%) rotate(-1.28deg) scale(1.0400); }
-  25.0% { transform: translate(0.18%, -0.47%) rotate(-2.35deg) scale(1.0400); }
-  33.3% { transform: translate(0.38%, -1.14%) rotate(-3.24deg) scale(1.0400); }
-  41.7% { transform: translate(0.57%, -1.83%) rotate(-3.60deg) scale(1.0400); }
-  50.0% { transform: translate(0.68%, -2.37%) rotate(-3.39deg) scale(1.0400); }
-  58.3% { transform: translate(0.66%, -2.59%) rotate(-2.87deg) scale(1.0400); }
-  66.7% { transform: translate(0.62%, -2.38%) rotate(-2.17deg) scale(1.0400); }
-  75.0% { transform: translate(0.51%, -1.76%) rotate(-1.41deg) scale(1.0400); }
-  83.3% { transform: translate(0.30%, -0.97%) rotate(-0.71deg) scale(1.0397); }
-  91.7% { transform: translate(0.09%, -0.29%) rotate(-0.20deg) scale(1.0177); }
+  8.3% { transform: translate(0.01%, 0.05%) rotate(-0.17deg) scale(1.0182); }
+  16.7% { transform: translate(0.03%, 0.00%) rotate(-0.57deg) scale(1.0220); }
+  25.0% { transform: translate(0.10%, -0.20%) rotate(-1.05deg) scale(1.0220); }
+  33.3% { transform: translate(0.21%, -0.47%) rotate(-1.44deg) scale(1.0220); }
+  41.7% { transform: translate(0.32%, -0.76%) rotate(-1.60deg) scale(1.0220); }
+  50.0% { transform: translate(0.38%, -0.98%) rotate(-1.51deg) scale(1.0220); }
+  58.3% { transform: translate(0.36%, -1.07%) rotate(-1.28deg) scale(1.0220); }
+  66.7% { transform: translate(0.34%, -0.98%) rotate(-0.96deg) scale(1.0220); }
+  75.0% { transform: translate(0.28%, -0.73%) rotate(-0.63deg) scale(1.0220); }
+  83.3% { transform: translate(0.16%, -0.40%) rotate(-0.31deg) scale(1.0219); }
+  91.7% { transform: translate(0.05%, -0.12%) rotate(-0.09deg) scale(1.0097); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_nod_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.24%, 0.28%) rotate(0.27deg) scale(1.0207); }
-  16.7% { transform: translate(0.76%, 0.95%) rotate(0.94deg) scale(1.0306); }
-  25.0% { transform: translate(1.25%, 1.74%) rotate(1.77deg) scale(1.0260); }
-  33.3% { transform: translate(1.41%, 2.39%) rotate(2.54deg) scale(1.0195); }
-  41.7% { transform: translate(1.16%, 2.63%) rotate(3.02deg) scale(1.0147); }
-  50.0% { transform: translate(0.67%, 2.42%) rotate(3.01deg) scale(1.0270); }
-  58.3% { transform: translate(0.09%, 1.94%) rotate(2.57deg) scale(1.0400); }
-  66.7% { transform: translate(-0.42%, 1.34%) rotate(1.87deg) scale(1.0305); }
-  75.0% { transform: translate(-0.70%, 0.72%) rotate(1.09deg) scale(1.0026); }
-  83.3% { transform: translate(-0.59%, 0.22%) rotate(0.40deg) scale(0.9951); }
-  91.7% { transform: translate(-0.22%, -0.03%) rotate(-0.02deg) scale(0.9978); }
+  8.3% { transform: translate(0.10%, 0.13%) rotate(0.14deg) scale(1.0103); }
+  16.7% { transform: translate(0.32%, 0.44%) rotate(0.49deg) scale(1.0153); }
+  25.0% { transform: translate(0.53%, 0.80%) rotate(0.92deg) scale(1.0130); }
+  33.3% { transform: translate(0.60%, 1.09%) rotate(1.32deg) scale(1.0098); }
+  41.7% { transform: translate(0.49%, 1.20%) rotate(1.57deg) scale(1.0073); }
+  50.0% { transform: translate(0.28%, 1.11%) rotate(1.56deg) scale(1.0135); }
+  58.3% { transform: translate(0.04%, 0.90%) rotate(1.33deg) scale(1.0200); }
+  66.7% { transform: translate(-0.18%, 0.62%) rotate(0.97deg) scale(1.0152); }
+  75.0% { transform: translate(-0.30%, 0.35%) rotate(0.56deg) scale(1.0013); }
+  83.3% { transform: translate(-0.25%, 0.12%) rotate(0.21deg) scale(0.9976); }
+  91.7% { transform: translate(-0.09%, -0.01%) rotate(-0.01deg) scale(0.9989); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_nod_v3 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.17%, 0.28%) rotate(-0.52deg) scale(1.0077); }
-  16.7% { transform: translate(0.45%, 0.62%) rotate(-1.17deg) scale(1.0310); }
-  25.0% { transform: translate(0.56%, 0.74%) rotate(-0.65deg) scale(1.0255); }
-  33.3% { transform: translate(0.65%, 0.91%) rotate(0.84deg) scale(1.0193); }
-  41.7% { transform: translate(0.65%, 1.12%) rotate(2.12deg) scale(1.0263); }
-  50.0% { transform: translate(0.58%, 1.27%) rotate(2.26deg) scale(1.0320); }
-  58.3% { transform: translate(0.48%, 1.37%) rotate(1.98deg) scale(1.0199); }
-  66.7% { transform: translate(0.35%, 1.38%) rotate(1.53deg) scale(1.0114); }
-  75.0% { transform: translate(0.23%, 1.27%) rotate(1.01deg) scale(1.0127); }
-  83.3% { transform: translate(0.11%, 0.91%) rotate(0.52deg) scale(1.0169); }
-  91.7% { transform: translate(0.03%, 0.32%) rotate(0.15deg) scale(1.0186); }
+  8.3% { transform: translate(0.09%, 0.15%) rotate(-0.28deg) scale(1.0042); }
+  16.7% { transform: translate(0.24%, 0.33%) rotate(-0.62deg) scale(1.0165); }
+  25.0% { transform: translate(0.30%, 0.39%) rotate(-0.35deg) scale(1.0136); }
+  33.3% { transform: translate(0.34%, 0.48%) rotate(0.45deg) scale(1.0102); }
+  41.7% { transform: translate(0.35%, 0.60%) rotate(1.13deg) scale(1.0140); }
+  50.0% { transform: translate(0.31%, 0.68%) rotate(1.21deg) scale(1.0171); }
+  58.3% { transform: translate(0.26%, 0.73%) rotate(1.06deg) scale(1.0106); }
+  66.7% { transform: translate(0.19%, 0.73%) rotate(0.82deg) scale(1.0061); }
+  75.0% { transform: translate(0.12%, 0.67%) rotate(0.54deg) scale(1.0068); }
+  83.3% { transform: translate(0.06%, 0.49%) rotate(0.27deg) scale(1.0090); }
+  91.7% { transform: translate(0.02%, 0.17%) rotate(0.08deg) scale(1.0099); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_small_nod_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.04%, 0.09%) rotate(-0.07deg) scale(0.9968); }
-  16.7% { transform: translate(0.13%, 0.34%) rotate(-0.25deg) scale(0.9956); }
-  25.0% { transform: translate(0.23%, 0.69%) rotate(-0.52deg) scale(0.9950); }
-  33.3% { transform: translate(0.32%, 1.10%) rotate(-0.85deg) scale(0.9950); }
-  41.7% { transform: translate(0.35%, 1.52%) rotate(-1.20deg) scale(0.9950); }
-  50.0% { transform: translate(0.48%, 1.91%) rotate(-1.56deg) scale(0.9950); }
-  58.3% { transform: translate(0.78%, 2.21%) rotate(-1.88deg) scale(0.9950); }
-  66.7% { transform: translate(1.12%, 2.38%) rotate(-2.14deg) scale(0.9950); }
-  75.0% { transform: translate(1.40%, 2.26%) rotate(-2.31deg) scale(0.9950); }
-  83.3% { transform: translate(1.49%, 1.44%) rotate(-2.35deg) scale(0.9950); }
-  91.7% { transform: translate(0.69%, 0.47%) rotate(-1.09deg) scale(0.9950); }
+  8.3% { transform: translate(0.01%, 0.03%) rotate(-0.02deg) scale(0.9988); }
+  16.7% { transform: translate(0.05%, 0.12%) rotate(-0.09deg) scale(0.9984); }
+  25.0% { transform: translate(0.08%, 0.25%) rotate(-0.19deg) scale(0.9982); }
+  33.3% { transform: translate(0.12%, 0.40%) rotate(-0.31deg) scale(0.9982); }
+  41.7% { transform: translate(0.13%, 0.56%) rotate(-0.44deg) scale(0.9982); }
+  50.0% { transform: translate(0.18%, 0.70%) rotate(-0.57deg) scale(0.9982); }
+  58.3% { transform: translate(0.29%, 0.81%) rotate(-0.69deg) scale(0.9982); }
+  66.7% { transform: translate(0.41%, 0.88%) rotate(-0.79deg) scale(0.9982); }
+  75.0% { transform: translate(0.52%, 0.83%) rotate(-0.85deg) scale(0.9982); }
+  83.3% { transform: translate(0.55%, 0.53%) rotate(-0.86deg) scale(0.9982); }
+  91.7% { transform: translate(0.25%, 0.17%) rotate(-0.40deg) scale(0.9982); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_small_nod_v3 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.00%, 0.14%) rotate(1.02deg) scale(1.0126); }
-  16.7% { transform: translate(-0.17%, 0.51%) rotate(1.39deg) scale(1.0172); }
-  25.0% { transform: translate(-0.41%, 0.99%) rotate(1.43deg) scale(1.0185); }
-  33.3% { transform: translate(-0.48%, 1.49%) rotate(1.50deg) scale(1.0198); }
-  41.7% { transform: translate(-0.50%, 1.91%) rotate(1.56deg) scale(1.0187); }
-  50.0% { transform: translate(-0.51%, 2.13%) rotate(1.62deg) scale(1.0150); }
-  58.3% { transform: translate(-0.63%, 2.01%) rotate(1.62deg) scale(1.0039); }
-  66.7% { transform: translate(-0.79%, 1.52%) rotate(1.39deg) scale(0.9978); }
-  75.0% { transform: translate(-0.75%, 0.87%) rotate(0.99deg) scale(0.9995); }
-  83.3% { transform: translate(-0.64%, 0.30%) rotate(0.53deg) scale(1.0019); }
-  91.7% { transform: translate(-0.46%, 0.03%) rotate(0.15deg) scale(1.0008); }
+  8.3% { transform: translate(0.00%, 0.06%) rotate(0.39deg) scale(1.0048); }
+  16.7% { transform: translate(-0.07%, 0.19%) rotate(0.53deg) scale(1.0066); }
+  25.0% { transform: translate(-0.15%, 0.38%) rotate(0.54deg) scale(1.0071); }
+  33.3% { transform: translate(-0.18%, 0.57%) rotate(0.57deg) scale(1.0075); }
+  41.7% { transform: translate(-0.19%, 0.73%) rotate(0.60deg) scale(1.0071); }
+  50.0% { transform: translate(-0.19%, 0.81%) rotate(0.62deg) scale(1.0057); }
+  58.3% { transform: translate(-0.24%, 0.77%) rotate(0.62deg) scale(1.0015); }
+  66.7% { transform: translate(-0.30%, 0.58%) rotate(0.53deg) scale(0.9992); }
+  75.0% { transform: translate(-0.29%, 0.33%) rotate(0.38deg) scale(0.9999); }
+  83.3% { transform: translate(-0.24%, 0.11%) rotate(0.20deg) scale(1.0008); }
+  91.7% { transform: translate(-0.17%, 0.01%) rotate(0.06deg) scale(1.0003); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_slow_nod_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.09%, 0.31%) rotate(0.16deg) scale(1.0068); }
-  16.7% { transform: translate(-0.32%, 1.00%) rotate(0.02deg) scale(1.0049); }
-  25.0% { transform: translate(-0.64%, 1.73%) rotate(-0.09deg) scale(0.9977); }
-  33.3% { transform: translate(-0.97%, 2.14%) rotate(0.21deg) scale(0.9950); }
-  41.7% { transform: translate(-1.26%, 1.76%) rotate(-0.10deg) scale(0.9950); }
-  50.0% { transform: translate(-1.46%, 1.00%) rotate(-0.76deg) scale(0.9950); }
-  58.3% { transform: translate(-1.48%, 0.67%) rotate(-1.31deg) scale(0.9950); }
-  66.7% { transform: translate(-1.27%, 0.78%) rotate(-1.38deg) scale(0.9950); }
-  75.0% { transform: translate(-0.89%, 0.76%) rotate(-1.07deg) scale(0.9950); }
-  83.3% { transform: translate(-0.48%, 0.46%) rotate(-0.60deg) scale(0.9950); }
-  91.7% { transform: translate(-0.14%, 0.14%) rotate(-0.18deg) scale(0.9950); }
+  8.3% { transform: translate(-0.04%, 0.15%) rotate(0.08deg) scale(1.0034); }
+  16.7% { transform: translate(-0.13%, 0.50%) rotate(0.01deg) scale(1.0024); }
+  25.0% { transform: translate(-0.25%, 0.86%) rotate(-0.05deg) scale(0.9989); }
+  33.3% { transform: translate(-0.39%, 1.07%) rotate(0.11deg) scale(0.9975); }
+  41.7% { transform: translate(-0.51%, 0.88%) rotate(-0.05deg) scale(0.9975); }
+  50.0% { transform: translate(-0.58%, 0.50%) rotate(-0.38deg) scale(0.9975); }
+  58.3% { transform: translate(-0.59%, 0.33%) rotate(-0.66deg) scale(0.9975); }
+  66.7% { transform: translate(-0.51%, 0.39%) rotate(-0.69deg) scale(0.9975); }
+  75.0% { transform: translate(-0.36%, 0.38%) rotate(-0.53deg) scale(0.9975); }
+  83.3% { transform: translate(-0.19%, 0.23%) rotate(-0.30deg) scale(0.9975); }
+  91.7% { transform: translate(-0.06%, 0.07%) rotate(-0.09deg) scale(0.9975); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_head_wobble_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.19%, -0.35%) rotate(-0.48deg) scale(1.0210); }
-  16.7% { transform: translate(-0.63%, -1.13%) rotate(-1.47deg) scale(1.0129); }
-  25.0% { transform: translate(-1.11%, -1.90%) rotate(-2.29deg) scale(0.9950); }
-  33.3% { transform: translate(-1.45%, -2.26%) rotate(-2.32deg) scale(0.9950); }
-  41.7% { transform: translate(-1.47%, -1.97%) rotate(-1.61deg) scale(0.9950); }
-  50.0% { transform: translate(-1.28%, -1.50%) rotate(-0.52deg) scale(0.9950); }
-  58.3% { transform: translate(-0.97%, -1.29%) rotate(0.56deg) scale(0.9958); }
-  66.7% { transform: translate(-0.60%, -1.25%) rotate(1.28deg) scale(1.0005); }
-  75.0% { transform: translate(-0.26%, -1.24%) rotate(1.31deg) scale(1.0052); }
-  83.3% { transform: translate(0.00%, -1.17%) rotate(0.84deg) scale(1.0054); }
-  91.7% { transform: translate(0.11%, -0.55%) rotate(0.27deg) scale(1.0021); }
+  8.3% { transform: translate(-0.08%, -0.17%) rotate(-0.36deg) scale(1.0156); }
+  16.7% { transform: translate(-0.25%, -0.54%) rotate(-1.09deg) scale(1.0095); }
+  25.0% { transform: translate(-0.44%, -0.92%) rotate(-1.70deg) scale(0.9963); }
+  33.3% { transform: translate(-0.58%, -1.09%) rotate(-1.72deg) scale(0.9963); }
+  41.7% { transform: translate(-0.59%, -0.96%) rotate(-1.19deg) scale(0.9963); }
+  50.0% { transform: translate(-0.51%, -0.73%) rotate(-0.39deg) scale(0.9963); }
+  58.3% { transform: translate(-0.39%, -0.63%) rotate(0.42deg) scale(0.9969); }
+  66.7% { transform: translate(-0.24%, -0.60%) rotate(0.95deg) scale(1.0003); }
+  75.0% { transform: translate(-0.10%, -0.58%) rotate(0.97deg) scale(1.0038); }
+  83.3% { transform: translate(0.00%, -0.54%) rotate(0.62deg) scale(1.0039); }
+  91.7% { transform: translate(0.04%, -0.25%) rotate(0.20deg) scale(1.0016); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_head_wobble_v3 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.19%, -0.07%) rotate(-0.19deg) scale(1.0267); }
-  16.7% { transform: translate(0.29%, -0.19%) rotate(-0.63deg) scale(1.0400); }
-  25.0% { transform: translate(0.34%, -0.20%) rotate(-1.11deg) scale(1.0400); }
-  33.3% { transform: translate(0.44%, 0.09%) rotate(-1.41deg) scale(1.0389); }
-  41.7% { transform: translate(0.54%, 0.08%) rotate(-1.26deg) scale(1.0251); }
-  50.0% { transform: translate(0.62%, -0.10%) rotate(-0.47deg) scale(1.0320); }
-  58.3% { transform: translate(0.66%, -0.30%) rotate(0.48deg) scale(1.0154); }
-  66.7% { transform: translate(0.60%, -0.48%) rotate(1.03deg) scale(1.0105); }
-  75.0% { transform: translate(0.44%, -0.43%) rotate(0.93deg) scale(1.0035); }
-  83.3% { transform: translate(0.24%, 0.05%) rotate(0.56deg) scale(0.9973); }
-  91.7% { transform: translate(0.07%, 0.08%) rotate(0.18deg) scale(0.9951); }
+  8.3% { transform: translate(0.17%, -0.07%) rotate(-0.19deg) scale(1.0133); }
+  16.7% { transform: translate(0.26%, -0.19%) rotate(-0.63deg) scale(1.0200); }
+  25.0% { transform: translate(0.31%, -0.20%) rotate(-1.11deg) scale(1.0200); }
+  33.3% { transform: translate(0.39%, 0.09%) rotate(-1.41deg) scale(1.0194); }
+  41.7% { transform: translate(0.49%, 0.08%) rotate(-1.26deg) scale(1.0126); }
+  50.0% { transform: translate(0.56%, -0.10%) rotate(-0.47deg) scale(1.0160); }
+  58.3% { transform: translate(0.60%, -0.30%) rotate(0.48deg) scale(1.0077); }
+  66.7% { transform: translate(0.55%, -0.48%) rotate(1.03deg) scale(1.0053); }
+  75.0% { transform: translate(0.40%, -0.43%) rotate(0.93deg) scale(1.0018); }
+  83.3% { transform: translate(0.22%, 0.05%) rotate(0.56deg) scale(0.9987); }
+  91.7% { transform: translate(0.06%, 0.08%) rotate(0.18deg) scale(0.9976); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_tilt_head_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(-0.15%, -0.30%) rotate(0.35deg) scale(1.0029); }
-  16.7% { transform: translate(-0.50%, -0.66%) rotate(1.21deg) scale(1.0067); }
-  25.0% { transform: translate(-0.93%, -0.55%) rotate(2.24deg) scale(1.0048); }
-  33.3% { transform: translate(-1.31%, -0.23%) rotate(3.14deg) scale(0.9960); }
-  41.7% { transform: translate(-1.50%, 0.19%) rotate(3.59deg) scale(1.0046); }
-  50.0% { transform: translate(-1.46%, 0.65%) rotate(3.45deg) scale(0.9966); }
-  58.3% { transform: translate(-1.35%, 1.07%) rotate(2.95deg) scale(0.9950); }
-  66.7% { transform: translate(-1.22%, 1.39%) rotate(2.25deg) scale(0.9950); }
-  75.0% { transform: translate(-1.12%, 1.53%) rotate(1.47deg) scale(0.9950); }
-  83.3% { transform: translate(-1.04%, 1.20%) rotate(0.74deg) scale(0.9950); }
-  91.7% { transform: translate(-0.44%, 0.43%) rotate(0.21deg) scale(0.9952); }
+  8.3% { transform: translate(-0.06%, -0.18%) rotate(0.22deg) scale(1.0018); }
+  16.7% { transform: translate(-0.20%, -0.41%) rotate(0.74deg) scale(1.0041); }
+  25.0% { transform: translate(-0.37%, -0.34%) rotate(1.37deg) scale(1.0029); }
+  33.3% { transform: translate(-0.52%, -0.14%) rotate(1.92deg) scale(0.9976); }
+  41.7% { transform: translate(-0.60%, 0.11%) rotate(2.19deg) scale(1.0029); }
+  50.0% { transform: translate(-0.59%, 0.39%) rotate(2.11deg) scale(0.9979); }
+  58.3% { transform: translate(-0.54%, 0.64%) rotate(1.80deg) scale(0.9969); }
+  66.7% { transform: translate(-0.49%, 0.83%) rotate(1.37deg) scale(0.9969); }
+  75.0% { transform: translate(-0.45%, 0.92%) rotate(0.90deg) scale(0.9969); }
+  83.3% { transform: translate(-0.42%, 0.72%) rotate(0.45deg) scale(0.9969); }
+  91.7% { transform: translate(-0.18%, 0.26%) rotate(0.13deg) scale(0.9970); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
 @keyframes l_look_up_v2 {
   0.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
-  8.3% { transform: translate(0.27%, -0.25%) rotate(0.23deg) scale(1.0036); }
-  16.7% { transform: translate(0.83%, -0.46%) rotate(0.29deg) scale(1.0090); }
-  25.0% { transform: translate(1.35%, -0.88%) rotate(-0.16deg) scale(1.0304); }
-  33.3% { transform: translate(1.50%, -1.76%) rotate(-0.33deg) scale(1.0400); }
-  41.7% { transform: translate(1.48%, -2.24%) rotate(0.06deg) scale(1.0400); }
-  50.0% { transform: translate(1.45%, -1.85%) rotate(0.72deg) scale(1.0400); }
-  58.3% { transform: translate(1.43%, -1.21%) rotate(1.39deg) scale(1.0400); }
-  66.7% { transform: translate(1.42%, -0.93%) rotate(1.78deg) scale(1.0400); }
-  75.0% { transform: translate(1.16%, -0.74%) rotate(1.63deg) scale(1.0400); }
-  83.3% { transform: translate(0.67%, -0.50%) rotate(1.00deg) scale(1.0400); }
-  91.7% { transform: translate(0.21%, -0.17%) rotate(0.32deg) scale(1.0375); }
+  8.3% { transform: translate(0.11%, -0.10%) rotate(0.09deg) scale(1.0014); }
+  16.7% { transform: translate(0.33%, -0.19%) rotate(0.12deg) scale(1.0036); }
+  25.0% { transform: translate(0.54%, -0.35%) rotate(-0.06deg) scale(1.0122); }
+  33.3% { transform: translate(0.60%, -0.70%) rotate(-0.13deg) scale(1.0160); }
+  41.7% { transform: translate(0.59%, -0.90%) rotate(0.02deg) scale(1.0160); }
+  50.0% { transform: translate(0.58%, -0.74%) rotate(0.29deg) scale(1.0160); }
+  58.3% { transform: translate(0.57%, -0.49%) rotate(0.56deg) scale(1.0160); }
+  66.7% { transform: translate(0.57%, -0.37%) rotate(0.71deg) scale(1.0160); }
+  75.0% { transform: translate(0.46%, -0.29%) rotate(0.65deg) scale(1.0160); }
+  83.3% { transform: translate(0.27%, -0.20%) rotate(0.40deg) scale(1.0160); }
+  91.7% { transform: translate(0.08%, -0.07%) rotate(0.13deg) scale(1.0150); }
   100.0% { transform: translate(0.00%, 0.00%) rotate(0.00deg) scale(1.0000); }
 }
-.gest.g-nod { animation: l_small_nod 1200ms linear 1 both; }
-.gest.g-nod.v2 { animation-name: l_nod; animation-duration: 920ms; }
-.gest.g-nod.v3 { animation-name: l_nod_v2; animation-duration: 920ms; }
-.gest.g-nod.v4 { animation-name: l_nod_v3; animation-duration: 920ms; }
-.gest.g-nod.v5 { animation-name: l_small_nod_v2; animation-duration: 750ms; }
-.gest.g-nod.v6 { animation-name: l_small_nod_v3; animation-duration: 680ms; }
-.gest.g-lookup { animation: l_look_up 800ms linear 1 both; }
-.gest.g-lookup.v2 { animation-name: l_look_up_v2; animation-duration: 1200ms; }
-.gest.g-lean { animation: l_both_hands 1520ms linear 1 both; }
-.gest.g-lean.v2 { animation-name: l_lean_in; animation-duration: 1200ms; }
-.gest.g-open { animation: l_open_palm 2920ms linear 1 both; }
-.gest.g-greet { animation: l_greeting 3000ms linear 1 both; }
-.gest.g-slow { animation: l_slow_nod 1240ms linear 1 both; }
-.gest.g-slow.v2 { animation-name: l_slow_nod_v2; animation-duration: 1120ms; }
-.gest.g-wobble { animation: l_head_wobble 1400ms linear 1 both; }
-.gest.g-wobble.v2 { animation-name: l_head_wobble_v2; animation-duration: 1042ms; }
-.gest.g-wobble.v3 { animation-name: l_head_wobble_v3; animation-duration: 920ms; }
-.gest.g-tilt { animation: l_tilt_head 680ms linear 1 both; }
-.gest.g-tilt.v2 { animation-name: l_tilt_head_v2; animation-duration: 917ms; }
+.gest.g-nod { animation: l_small_nod 1620ms linear 1 both; }
+.gest.g-nod.v2 { animation-name: l_nod; animation-duration: 1242ms; }
+.gest.g-nod.v3 { animation-name: l_nod_v2; animation-duration: 1242ms; }
+.gest.g-nod.v4 { animation-name: l_nod_v3; animation-duration: 1242ms; }
+.gest.g-nod.v5 { animation-name: l_small_nod_v2; animation-duration: 1013ms; }
+.gest.g-nod.v6 { animation-name: l_small_nod_v3; animation-duration: 918ms; }
+.gest.g-lookup { animation: l_look_up 1100ms linear 1 both; }
+.gest.g-lookup.v2 { animation-name: l_look_up_v2; animation-duration: 1620ms; }
+.gest.g-lean { animation: l_both_hands 2052ms linear 1 both; }
+.gest.g-lean.v2 { animation-name: l_lean_in; animation-duration: 1620ms; }
+.gest.g-open { animation: l_open_palm 3600ms linear 1 both; }
+.gest.g-greet { animation: l_greeting 3600ms linear 1 both; }
+.gest.g-slow { animation: l_slow_nod 1674ms linear 1 both; }
+.gest.g-slow.v2 { animation-name: l_slow_nod_v2; animation-duration: 1600ms; }
+.gest.g-wobble { animation: l_head_wobble 1890ms linear 1 both; }
+.gest.g-wobble.v2 { animation-name: l_head_wobble_v2; animation-duration: 1407ms; }
+.gest.g-wobble.v3 { animation-name: l_head_wobble_v3; animation-duration: 1400ms; }
+.gest.g-tilt { animation: l_tilt_head 1100ms linear 1 both; }
+.gest.g-tilt.v2 { animation-name: l_tilt_head_v2; animation-duration: 1238ms; }

@@ -1,0 +1,206 @@
+{
+ "text": "Exact quote gaadi dekh kar hi banega ji. Main confirm karke aapko call par bata dungi. Koi hidden charge nahi hoga.",
+ "duration": 10.968,
+ "mouthCues": [
+  {
+   "start": 0.0,
+   "end": 0.233,
+   "value": "X"
+  },
+  {
+   "start": 0.233,
+   "end": 0.595,
+   "value": "B"
+  },
+  {
+   "start": 0.595,
+   "end": 0.776,
+   "value": "C"
+  },
+  {
+   "start": 0.776,
+   "end": 1.355,
+   "value": "B"
+  },
+  {
+   "start": 1.369,
+   "end": 1.642,
+   "value": "C"
+  },
+  {
+   "start": 1.642,
+   "end": 1.733,
+   "value": "B"
+  },
+  {
+   "start": 1.733,
+   "end": 1.824,
+   "value": "D"
+  },
+  {
+   "start": 1.838,
+   "end": 2.084,
+   "value": "B"
+  },
+  {
+   "start": 2.084,
+   "end": 2.492,
+   "value": "C"
+  },
+  {
+   "start": 2.492,
+   "end": 3.117,
+   "value": "D"
+  },
+  {
+   "start": 3.131,
+   "end": 3.237,
+   "value": "B"
+  },
+  {
+   "start": 3.237,
+   "end": 3.585,
+   "value": "D"
+  },
+  {
+   "start": 3.599,
+   "end": 3.722,
+   "value": "B"
+  },
+  {
+   "start": 3.722,
+   "end": 3.844,
+   "value": "F"
+  },
+  {
+   "start": 3.844,
+   "end": 3.966,
+   "value": "B"
+  },
+  {
+   "start": 3.966,
+   "end": 4.088,
+   "value": "D"
+  },
+  {
+   "start": 4.088,
+   "end": 4.21,
+   "value": "B"
+  },
+  {
+   "start": 4.224,
+   "end": 4.452,
+   "value": "C"
+  },
+  {
+   "start": 4.452,
+   "end": 4.679,
+   "value": "B"
+  },
+  {
+   "start": 4.693,
+   "end": 4.928,
+   "value": "C"
+  },
+  {
+   "start": 4.928,
+   "end": 5.045,
+   "value": "A"
+  },
+  {
+   "start": 5.045,
+   "end": 5.162,
+   "value": "F"
+  },
+  {
+   "start": 5.176,
+   "end": 5.309,
+   "value": "B"
+  },
+  {
+   "start": 5.309,
+   "end": 5.441,
+   "value": "C"
+  },
+  {
+   "start": 5.441,
+   "end": 6.128,
+   "value": "H"
+  },
+  {
+   "start": 6.142,
+   "end": 6.33,
+   "value": "B"
+  },
+  {
+   "start": 6.33,
+   "end": 6.518,
+   "value": "G"
+  },
+  {
+   "start": 6.518,
+   "end": 6.707,
+   "value": "B"
+  },
+  {
+   "start": 6.707,
+   "end": 6.895,
+   "value": "D"
+  },
+  {
+   "start": 6.895,
+   "end": 7.882,
+   "value": "X"
+  },
+  {
+   "start": 7.882,
+   "end": 8.019,
+   "value": "C"
+  },
+  {
+   "start": 8.019,
+   "end": 8.156,
+   "value": "F"
+  },
+  {
+   "start": 8.156,
+   "end": 8.748,
+   "value": "D"
+  },
+  {
+   "start": 8.763,
+   "end": 8.873,
+   "value": "B"
+  },
+  {
+   "start": 8.873,
+   "end": 8.983,
+   "value": "C"
+  },
+  {
+   "start": 8.983,
+   "end": 9.544,
+   "value": "B"
+  },
+  {
+   "start": 9.558,
+   "end": 9.696,
+   "value": "C"
+  },
+  {
+   "start": 9.696,
+   "end": 9.835,
+   "value": "F"
+  },
+  {
+   "start": 9.835,
+   "end": 10.112,
+   "value": "C"
+  },
+  {
+   "start": 10.112,
+   "end": 11.101,
+   "value": "X"
+  }
+ ]
+}

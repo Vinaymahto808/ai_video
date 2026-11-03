@@ -37,8 +37,8 @@ came out of it. Items marked **open** are not done and need a decision or an acc
 | `BITRIX24_WEBHOOK_URL` | `https://<portal>.bitrix24.in/rest/<user>/<code>/` | Inbound webhook with `crm` scope. Each ended call becomes one Lead (+ transcript comment), pushed by the outbox worker with retries; idempotent per conversation. Create the custom lead field `UF_CRM_CONVERSATION_ID` (string) once. |
 | `BITRIX24_LEAD_STATUS` / `BITRIX24_ASSIGNED_BY` | `NEW` / user id | Funnel stage for new leads and (optional) the advisor to assign. |
 | `HUMAN_BOT_PUBLIC_URL` | `https://bot.example.in` | Used to put a recording link into the lead comment. |
-| `HUMAN_BOT_LLM_TIMEOUT_S` | `8` | Per-request socket deadline for an LLM provider before the next one is tried. |
-| `HUMAN_BOT_AVATAR_PROVIDER` | `simli` | **Production default (2026-11-03).** `/health` reports `avatar.ready`, the widget opens the Simli WebRTC face and streams our TTS audio into it; if the stream cannot start (key, quota, WebRTC blocked) the widget falls back to the 2D puppet by itself. `did` = D-ID (untested lately), unset = puppet only. |
+| `HUMAN_BOT_LLM_TIMEOUT_S` | `4` (code default 8) | Per-request socket deadline for an LLM provider before the next one is tried. 4 s since the 2026-11-03 latency review: a stalled provider cost 8 s per turn before the fallback. |
+| `HUMAN_BOT_AVATAR_PROVIDER` | `puppet` until the custom face exists | `simli` opens the Simli WebRTC face and streams our TTS audio into it, with the 2D puppet as automatic fallback. **Do not set `simli` while `SIMLI_FACE_ID` is a stock face** (tried 2026-11-03 with "Anna": the stock face replaces Neha's whole frame and the user rejected it). Generate the face from the grid portrait first: `python tran_moment/simli_face.py generate` (needs a Trinity-2 generation on the Simli plan), then switch. `did` = D-ID (untested lately). |
 | `SIMLI_API_KEY`, `SIMLI_FACE_ID` | as issued | The server picks the face; clients can no longer choose one. |
 
 Built-in limits now enforced: JSON bodies 64 KB (413), `/stt` audio 8 MB, `/tts` text 600 chars, sessions

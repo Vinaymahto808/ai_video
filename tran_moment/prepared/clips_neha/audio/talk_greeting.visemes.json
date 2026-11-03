@@ -1,0 +1,191 @@
+{
+ "text": "Namaste ji. Main Neha, Auto Car Repair se. Bataiye, aapki gaadi mein kya dikkat hai? Main poori help karungi.",
+ "duration": 10.104,
+ "mouthCues": [
+  {
+   "start": 0.0,
+   "end": 0.225,
+   "value": "X"
+  },
+  {
+   "start": 0.225,
+   "end": 0.338,
+   "value": "B"
+  },
+  {
+   "start": 0.338,
+   "end": 0.451,
+   "value": "C"
+  },
+  {
+   "start": 0.451,
+   "end": 0.565,
+   "value": "A"
+  },
+  {
+   "start": 0.565,
+   "end": 0.678,
+   "value": "C"
+  },
+  {
+   "start": 0.678,
+   "end": 1.57,
+   "value": "B"
+  },
+  {
+   "start": 1.57,
+   "end": 1.828,
+   "value": "C"
+  },
+  {
+   "start": 1.828,
+   "end": 2.046,
+   "value": "X"
+  },
+  {
+   "start": 2.046,
+   "end": 2.148,
+   "value": "C"
+  },
+  {
+   "start": 2.148,
+   "end": 2.249,
+   "value": "G"
+  },
+  {
+   "start": 2.249,
+   "end": 2.351,
+   "value": "B"
+  },
+  {
+   "start": 2.351,
+   "end": 2.453,
+   "value": "F"
+  },
+  {
+   "start": 2.467,
+   "end": 2.562,
+   "value": "B"
+  },
+  {
+   "start": 2.562,
+   "end": 2.657,
+   "value": "C"
+  },
+  {
+   "start": 2.657,
+   "end": 3.336,
+   "value": "B"
+  },
+  {
+   "start": 3.35,
+   "end": 3.461,
+   "value": "A"
+  },
+  {
+   "start": 3.461,
+   "end": 3.571,
+   "value": "C"
+  },
+  {
+   "start": 3.571,
+   "end": 3.682,
+   "value": "B"
+  },
+  {
+   "start": 3.682,
+   "end": 3.793,
+   "value": "C"
+  },
+  {
+   "start": 3.793,
+   "end": 4.014,
+   "value": "D"
+  },
+  {
+   "start": 4.014,
+   "end": 4.124,
+   "value": "B"
+  },
+  {
+   "start": 4.124,
+   "end": 4.287,
+   "value": "X"
+  },
+  {
+   "start": 4.287,
+   "end": 4.552,
+   "value": "C"
+  },
+  {
+   "start": 4.552,
+   "end": 4.685,
+   "value": "A"
+  },
+  {
+   "start": 4.685,
+   "end": 5.388,
+   "value": "D"
+  },
+  {
+   "start": 5.402,
+   "end": 6.366,
+   "value": "C"
+  },
+  {
+   "start": 6.366,
+   "end": 6.475,
+   "value": "D"
+  },
+  {
+   "start": 6.475,
+   "end": 8.151,
+   "value": "X"
+  },
+  {
+   "start": 8.164,
+   "end": 8.282,
+   "value": "C"
+  },
+  {
+   "start": 8.282,
+   "end": 8.4,
+   "value": "B"
+  },
+  {
+   "start": 8.4,
+   "end": 8.517,
+   "value": "H"
+  },
+  {
+   "start": 8.531,
+   "end": 8.78,
+   "value": "C"
+  },
+  {
+   "start": 8.78,
+   "end": 8.905,
+   "value": "B"
+  },
+  {
+   "start": 8.905,
+   "end": 9.029,
+   "value": "G"
+  },
+  {
+   "start": 9.029,
+   "end": 9.154,
+   "value": "B"
+  },
+  {
+   "start": 9.154,
+   "end": 9.278,
+   "value": "D"
+  },
+  {
+   "start": 9.278,
+   "end": 10.229,
+   "value": "X"
+  }
+ ]
+}

@@ -1,0 +1,41 @@
+feature,area,priority,original,clone,notes
+Website avatar widget (one-tag embed),embed,must,yes,yes,avatar_widget/loader.js shadow root + iframe + origin-pinned bridge
+Mobile app SDK,embed,could,yes,no,panel runs in a WebView; no native SDK
+Kiosk / in-store screen mode,embed,should,yes,partial,browser runs; needs fullscreen + attract loop + idle reset + tap-to-talk
+AR/VR / 3D visualisation / metaverse showroom,embed,wont,yes,excluded,out of scope for a service advisor
+WhatsApp bot (capture + brochures + FAQs + reminders),channel,must,yes,no,/chat brain is channel-agnostic; needs Wati or Meta Cloud API adapter
+Google / Meta / Telegram messaging channels,channel,could,yes,no,
+Speech + text in one agent,channel,must,yes,yes,widget is voice-only by decision; embed.html card has text + voice
+Embedding into contact-centre tools / advisor consoles / dealer portals,channel,could,yes,no,
+GPT-powered streaming conversation,agent,must,yes,yes,llm/client.py Groq -> OpenAI -> Gemini -> offline brain; sentence SSE
+Multilingual,agent,should,yes,partial,Hinglish / Hindi / English only; female voice only
+Hybrid SLM + LLM cost profile,agent,could,yes,partial,local e5-small + FTS5 do the cheap part; hosted LLM answers; no SLM
+Self-learning knowledge base,agent,should,yes,partial,unanswered_questions recorded; no loop into KB
+Knowledge from catalogue / FAQs / SOPs / pricing rules / locations,agent,must,yes,partial,website crawl + persona catalogue; no PDF/SOP ingestion; no pricing rules engine
+Product recommendation + variant comparison + finance options,agent,should,yes,partial,recommend_max_models 2; no EMI tool; strict-KB forbids invented numbers
+Objection handling with consistent talk tracks,agent,must,yes,yes,persona objection_style + humanizer
+Empathetic / emotion-aware delivery,agent,must,yes,yes,emotion tags -> prosody + gestures + backchannels
+Avatar roles (narrator / brand expert / celebrity twin / tutor),agent,could,yes,partial,one persona per brand; celebrity twin excluded (consented voices only)
+Real-time avatar conversation,avatar,must,yes,yes,Simli live or 2D puppet with learned gestures
+Pre-rendered avatar videos,avatar,could,yes,no,tran_moment can render clips offline; not a feature
+Anonymous intent detection / personalisation / next best action,intelligence,should,yes,partial,aw:ctx page context + visitor id + returning-customer recall; no propensity model
+Lead scoring / qualification,intelligence,must,yes,yes,HOT/WARM/COLD weighted; AIVA-compatible JSON
+Lead recovery (re-engage dropped leads),intelligence,should,yes,no,needs outbound channel + scheduler
+Guided lead capture replacing forms,lead,must,yes,yes,discovery_order; one question per turn; facts from customer words only
+Nearest dealer / outlet routing,lead,must,yes,no,persona has one location string; needs outlet table + distance
+Appointment booking with live slots,lead,must,yes,no,BookingProvider designed (ARCHITECTURE s6); Neha offers call-back only
+Proactive service reminders,service,should,yes,no,needs WhatsApp/email channel + scheduler
+Service status / ETA / invoice self-service,service,could,yes,no,needs DMS
+Warranty / insurance / claims guidance,service,must,yes,partial,KB claim pages; claim intent -> hand-off + company call
+Renewals / upgrades / loyalty offers,service,could,yes,no,
+Advisor copilot (lookup + suggested replies),staff,should,yes,no,kb search API reusable; no staff UI
+Lead journey visibility + follow-up governance + alerts,ops,should,yes,partial,/conversations feed + Bitrix24 lead; no alerts or SLA tracking
+Performance insights + coaching,ops,could,yes,partial,eval scorer + audit score per call; no dashboard
+Analytics (engagement / bookings / resolved / repeat),ops,should,yes,partial,timings + lead status recorded; nothing aggregated
+REST API,integrations,must,yes,yes,API contract ARCHITECTURE s5
+CRM / DMS integration,integrations,must,yes,partial,Bitrix24 outbox sink (idempotent + retry); no DMS
+Cloud / VPC / on-prem / edge deployment,platform,should,yes,partial,single host Caddy + systemd + SQLite; hosted LLM/TTS/Simli external
+Governance (fencing / data policies / prompt frameworks),platform,must,yes,partial,strict-KB + guardrails + origin allow-list + rate limits; no multi-tenant admin
+Security (SSL / MFA / testing / PII),platform,must,yes,partial,HTTPS + admin key + limits; no PII redaction in transcripts; no MFA
+Edge facial detection,platform,wont,yes,excluded,consent / privacy decision
+Go-live in hours,commercial,must,yes,yes,one script tag + persona JSON + crawl

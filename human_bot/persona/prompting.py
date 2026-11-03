@@ -79,6 +79,40 @@ def _camera_block(p: dict) -> str:
 - Your face follows your words, so say the feeling instead of describing it: "acha" when you understand, "arre" when something is wrong, "bilkul" when you agree. Never write stage directions or brackets."""
 
 
+def _visitor_block(c: dict) -> str:
+    """Who is on the call. One tailored example per customer type, so the model picks the example
+    that fits instead of reciting the catalogue (the DaveAI-style 'tailor to the role' rule)."""
+    types = c.get("visitor_types") or []
+    if not types:
+        return ""
+    lines = [f'- {t["type"].replace("_", " ")}: when {t["cue"]}. Sounds like: "{t["example"]}"' for t in types]
+    return ("## Who is on the call (work it out from their first two turns, then tailor)\n"
+            + "\n".join(lines)
+            + "\n- Pick one type and keep your examples in that world. Never list features or services to find out; ask.")
+
+
+def _flow_block(s: dict) -> str:
+    flow = s.get("flow") or []
+    if not flow:
+        return ""
+    steps = "\n".join(f"{i}. {step}" for i, step in enumerate(flow, 1))
+    return f"## Call flow (one step per turn, skip a step you already have)\n{steps}"
+
+
+def _capture_block(c: dict, s: dict) -> str:
+    fields = s.get("capture_fields") or []
+    if not fields:
+        return ""
+    lines = "\n".join(f'- {f["field"].replace("_", " ")}: {f["when"]}' for f in fields)
+    name_rule = c.get("use_customer_name", "use the customer's name once you have it, not in every line")
+    confirm = s.get("confirm_line", "")
+    return (f"## Capture and confirm (naturally, inside the conversation, never as a form)\n{lines}\n"
+            f"- Name: {name_rule}.\n"
+            f"- Before you book or promise a call-back, read the details back once in one sentence and ask to confirm, "
+            f"like: \"{confirm}\". Fill the braces from what the customer said; drop a brace you do not have.\n"
+            f"- A booking is confirmed only when the system says so; until then say you have noted it.")
+
+
 def build_system_prompt(p: dict, language: str = "hinglish", extra: str = "") -> str:
     lang = (p.get("languages") or {}).get("mirror_policy", "")
     c = p.get("conversation", {})
@@ -88,6 +122,14 @@ def build_system_prompt(p: dict, language: str = "hinglish", extra: str = "") ->
     discovery = " -> ".join(s.get("discovery_order", []))
     next_steps = " / ".join(s.get("always_offer_next_step", []))
     handoff = " / ".join(g.get("handoff_trigger", []))
+    never_invent = ", ".join(g.get("never_invent", ["prices", "offers", "guarantees"]))
+    out_of_scope = g.get("out_of_scope_line", "")
+    competitors = g.get("competitors", "stay neutral; never criticise another brand or workshop")
+    unavailable = g.get("handoff_unavailable_line", "")
+    detail_words = c.get("max_words_detail", 70)
+    visitor = _visitor_block(c)
+    flow = _flow_block(s)
+    capture = _capture_block(c, s)
     female = (p.get("gender") or "").lower().startswith("f")
     g_verb = ("Keep verb endings consistent: you are female, so \"kar deti hoon\", \"bata dijiye\" — "
               "never \"kar deen\"." if female else
@@ -124,7 +166,7 @@ You are on a live video call with a customer. You are a real person on camera, n
 {camera}
 
 ## How you talk (these are hard limits, not suggestions)
-1. First turn: at most {c.get('max_words_first_turn', 14)} words. Every turn after: at most {c.get('max_words_turn', 40)} words.
+1. First turn: at most {c.get('max_words_first_turn', 14)} words. Every turn after: at most {c.get('max_words_turn', 40)} words. Only when the customer asks you to explain something in detail may you go up to {detail_words} words, once.
 2. Exactly {c.get('max_questions_per_turn', 1)} question per turn. Never stack two questions.
 3. Acknowledge in 2-5 words before you answer. "{ack_example}" "Right, good question."
 4. Use contractions and spoken forms. No bullet points, no markdown, no headings, no emoji.
@@ -134,6 +176,8 @@ You are on a live video call with a customer. You are a real person on camera, n
 {price_rule}
 9. Match the customer's turn length. Short question in, short answer out.
 10. If the customer interrupts, stop. Do not finish your sentence.
+11. End every turn with either one question or one concrete next step. Never end on a bare statement.
+12. Never invent {never_invent}. If you do not know, say you will confirm, and move to the next step.
 
 ## Sound like this (Hinglish)
 {examples}
@@ -150,6 +194,12 @@ These lines show the tone only. Never repeat them word for word; answer what the
 - Objections: {s.get('objection_style', '')}
 - End every call with a next step: {next_steps}.
 
+{visitor}
+
+{flow}
+
+{capture}
+
 {_price_section(p, will_confirm)}
 
 ## Context
@@ -157,9 +207,12 @@ The website passes facts about this visitor. Use them without asking again.
 If a fact is missing, ask. If a fact is unverified, say you will confirm — never invent.
 {{SESSION_CONTEXT}}
 
-## Handoff
+## Handoff and boundaries
 Escalate on: {handoff}.
 Line: "{g.get('handoff_line', '')}"
+If the team cannot take the call right now: "{unavailable}" Then collect the number and the best time, and promise the follow-up once.
+Out of scope (anything that is not this business): "{out_of_scope}" Then return to the call flow.
+Competitors: {competitors}.
 Disclose you are an AI in the first 10 seconds, once, naturally, then move on.
 
 ## Output
@@ -177,7 +230,9 @@ def build_compact_prompt(p: dict, language: str = "hinglish") -> str:
         f"Max {c.get('max_words_turn', 40)} words per turn, exactly one question. "
         "Acknowledge in 3 words first, then answer. Speak numbers ('16.46 lakh rupees'). "
         "Plain speech only: no markdown, no lists, no emoji, never say 'As an AI'. "
-        "Use only verified prices; if unknown, say you'll confirm. End with a next step. "
+        "Use only verified prices; if unknown, say you'll confirm. End with a next step or one question. "
+        "Never invent prices, offers, dates or capabilities. Off-topic: redirect to this business. "
+        "Competitors: stay neutral. Read details back once before booking; a booking is confirmed only by the system. "
         "If interrupted, stop."
     )
 

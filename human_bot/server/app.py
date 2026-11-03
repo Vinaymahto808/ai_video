@@ -52,7 +52,7 @@ from llm.client import (  # noqa: E402
     synthesize_stream,
     tts_status,
 )
-from llm.knowledge import knowledge_block, retrieve  # noqa: E402
+from llm.knowledge import KB_TIMEOUT_S, knowledge_block, retrieve  # noqa: E402
 from memory.store import ConversationStore  # noqa: E402
 from crm.outbox import Outbox  # noqa: E402
 from crm.bitrix24 import sink_from_env as bitrix_sink_from_env  # noqa: E402
@@ -71,6 +71,7 @@ from persona.humanizer import (  # noqa: E402
     pick_backchannel,
     pick_gesture,
     split_sentences,
+    wants_detail,
 )
 from persona.prompting import build_system_prompt, load_persona  # noqa: E402
 from postcall.analyze import analyze  # noqa: E402
@@ -150,6 +151,9 @@ class Session:
         self.save_lock = threading.Lock()
         # service request (crm/service_request.py): has Neha asked "bhej doon?", and what was filed
         self.sr_pending = False
+        # knowledge prefetch: /stt starts retrieval for the transcript it just produced, so /chat for the same
+        # text finds the passages ready instead of spending 30-300 ms on the kb call in the critical path
+        self.kb_prefetch: dict | None = None   # {"text", "done": Event, "result": (block, hits)}
         self.service_request: dict | None = None
 
     def messages(self, extra: str = "") -> list[dict]:
@@ -161,13 +165,39 @@ class Session:
         return [{"role": "system", "content": system}] + history
 
     def knowledge(self, query: str) -> tuple[str, list[dict]]:
-        """Retrieve website facts for this turn (persona.knowledge decides if/where). Fail-soft."""
+        """Retrieve website facts for this turn (persona.knowledge decides if/where). Fail-soft.
+        Uses the /stt prefetch when it was started for exactly this text."""
         kcfg = self.persona.get("knowledge") or {}
         wid = kcfg.get("website_id")
         if not wid:
             return "", []
+        pre = self.kb_prefetch
+        if pre and pre["text"] == query.strip().lower():
+            pre["done"].wait(KB_TIMEOUT_S)
+            self.kb_prefetch = None
+            if pre.get("result") is not None:
+                return pre["result"]
         hits = retrieve(wid, query, k=int(kcfg.get("top_k", 5)), min_score=kcfg.get("min_score"))
         return knowledge_block(hits, self.persona.get("company", "the company")), hits
+
+    def prefetch_knowledge(self, text: str) -> None:
+        """Start retrieval for `text` in the background (called by /stt as soon as the transcript exists)."""
+        if not (self.persona.get("knowledge") or {}).get("website_id") or not text.strip():
+            return
+        job = {"text": text.strip().lower(), "done": threading.Event(), "result": None}
+        self.kb_prefetch = job
+
+        def run() -> None:
+            try:
+                kcfg = self.persona.get("knowledge") or {}
+                hits = retrieve(kcfg["website_id"], text, k=int(kcfg.get("top_k", 5)), min_score=kcfg.get("min_score"))
+                job["result"] = (knowledge_block(hits, self.persona.get("company", "the company")), hits)
+            except Exception:  # noqa: BLE001  (fail-soft: /chat retrieves itself)
+                job["result"] = None
+            finally:
+                job["done"].set()
+
+        threading.Thread(target=run, daemon=True, name="kb-prefetch").start()
 
 
 SESSIONS: dict[str, Session] = {}
@@ -271,6 +301,23 @@ def tts_get_or_make(text: str, voice: str | None = None, wait_s: float = 30.0, e
         if hit:
             return hit
         raise
+
+
+# An opening interjection followed by a comma and more text: "Acha, ", "Haan ji, ", "Bilkul, ". Only matched once
+# per turn, only when text follows (so a bare "Acha" sentence is left to the normal splitter).
+_OPENER = re.compile(r"^\s*((?:haan ji|ji haan|haan|acha|achha|accha|bilkul|theek hai|dekhiye|arre|right|okay|samajh gayi)[,!])\s+\S", re.I)
+
+
+def cached_opener(opener: str, persona: dict) -> str:
+    """The interjection as the warm backchannel clip when one exists (exact text = cache key), else as spoken."""
+    bare = opener.rstrip(",!").strip()
+    for cand in (bare.lower(), bare.capitalize(), bare):
+        if cached_clip(cand):
+            return cand
+    for bc in (persona.get("conversation") or {}).get("backchannels") or []:
+        if bc.lower() == bare.lower():
+            return bc
+    return bare.capitalize() + "."
 
 
 def prefetch_tts(texts: list[str], voice: str | None = None, emotion: str = "neutral") -> None:
@@ -909,6 +956,8 @@ class Handler(BaseHTTPRequestHandler):
         # Recording: the raw utterance is kept with the conversation when the card tells us which one it is.
         sid = (parse_qs(urlparse(self.path).query).get("session_id") or [""])[0]
         s = get_session(sid) if sid else None
+        if s and text.strip():
+            s.prefetch_knowledge(text)  # the kb lookup runs while the card is still deciding the turn has ended
         if s and s.audio_dir and text.strip():
             ext = "webm" if "webm" in mime else "mp4" if "mp4" in mime else "wav"
             name = f"u{len(s.audio_files):03d}.{ext}"
@@ -1213,7 +1262,9 @@ class Handler(BaseHTTPRequestHandler):
             prefetch_tts([bc])  # normally already warm; this covers a persona added after start-up
 
         buf, spoken, idx = "", [], 0
-        max_words = persona["conversation"]["max_words_turn"]
+        # "explain in detail" lifts the per-sentence cap for this one turn; the prompt tells the model the same
+        max_words = (persona["conversation"].get("max_words_detail", 70) if wants_detail(user_text)
+                     else persona["conversation"]["max_words_turn"])
         try:
             # website knowledge for this turn (only personas with a `knowledge` block; empty block otherwise)
             kb_extra, hits = s.knowledge(user_text)
@@ -1240,6 +1291,20 @@ class Handler(BaseHTTPRequestHandler):
                     self._sse("interrupted", {"generation": my_gen})
                     return
                 buf += token
+                # First words first: an opening interjection ("Acha, ...", "Haan ji, ...") goes out on its own the
+                # moment the comma arrives. Those clips are warm from start-up, so the customer hears her react
+                # ~1 s before the first full sentence can be synthesized (Edge needs ~1 s per fresh clip).
+                if idx == 0 and not spoken:
+                    m_int = _OPENER.match(buf)
+                    if m_int:
+                        opener, buf = m_int.group(1), buf[m_int.end(1):].lstrip(" ,!")
+                        piece = cached_opener(opener, persona)
+                        spoken.append(piece)
+                        emo = emotion_of(piece)
+                        self._sse("sentence", {"index": idx, "text": piece, "emotion": emo,
+                                               "gesture": pick_gesture(persona["avatar"]["gestures"], emo, idx)})
+                        prefetch_tts([piece], emotion=emo)
+                        idx += 1
                 # flush at a sentence boundary so TTS can start before the reply ends
                 while True:
                     m = split_sentences(buf)

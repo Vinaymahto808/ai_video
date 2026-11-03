@@ -1,0 +1,191 @@
+{
+ "text": "Toh main note kar leti hoon. Creta, brake ka kaam, Gurgaon se kal subah pickup. Main yeh request bhej doon?",
+ "duration": 11.472,
+ "mouthCues": [
+  {
+   "start": 0.0,
+   "end": 0.232,
+   "value": "X"
+  },
+  {
+   "start": 0.232,
+   "end": 1.523,
+   "value": "B"
+  },
+  {
+   "start": 1.536,
+   "end": 1.73,
+   "value": "C"
+  },
+  {
+   "start": 1.73,
+   "end": 2.117,
+   "value": "F"
+  },
+  {
+   "start": 2.117,
+   "end": 2.311,
+   "value": "B"
+  },
+  {
+   "start": 2.311,
+   "end": 3.253,
+   "value": "X"
+  },
+  {
+   "start": 3.253,
+   "end": 3.783,
+   "value": "B"
+  },
+  {
+   "start": 3.783,
+   "end": 3.959,
+   "value": "C"
+  },
+  {
+   "start": 3.959,
+   "end": 4.081,
+   "value": "X"
+  },
+  {
+   "start": 4.081,
+   "end": 4.187,
+   "value": "A"
+  },
+  {
+   "start": 4.187,
+   "end": 4.397,
+   "value": "C"
+  },
+  {
+   "start": 4.397,
+   "end": 4.503,
+   "value": "B"
+  },
+  {
+   "start": 4.516,
+   "end": 5.087,
+   "value": "C"
+  },
+  {
+   "start": 5.087,
+   "end": 5.209,
+   "value": "A"
+  },
+  {
+   "start": 5.209,
+   "end": 5.345,
+   "value": "X"
+  },
+  {
+   "start": 5.345,
+   "end": 5.451,
+   "value": "C"
+  },
+  {
+   "start": 5.451,
+   "end": 5.558,
+   "value": "G"
+  },
+  {
+   "start": 5.558,
+   "end": 5.664,
+   "value": "B"
+  },
+  {
+   "start": 5.664,
+   "end": 5.771,
+   "value": "C"
+  },
+  {
+   "start": 5.771,
+   "end": 5.877,
+   "value": "F"
+  },
+  {
+   "start": 5.877,
+   "end": 6.242,
+   "value": "B"
+  },
+  {
+   "start": 6.255,
+   "end": 6.446,
+   "value": "C"
+  },
+  {
+   "start": 6.446,
+   "end": 6.962,
+   "value": "H"
+  },
+  {
+   "start": 6.975,
+   "end": 7.1,
+   "value": "A"
+  },
+  {
+   "start": 7.1,
+   "end": 7.225,
+   "value": "D"
+  },
+  {
+   "start": 7.225,
+   "end": 7.35,
+   "value": "B"
+  },
+  {
+   "start": 7.35,
+   "end": 7.475,
+   "value": "G"
+  },
+  {
+   "start": 7.475,
+   "end": 7.6,
+   "value": "A"
+  },
+  {
+   "start": 7.6,
+   "end": 8.891,
+   "value": "X"
+  },
+  {
+   "start": 8.905,
+   "end": 9.0,
+   "value": "D"
+  },
+  {
+   "start": 9.0,
+   "end": 9.095,
+   "value": "B"
+  },
+  {
+   "start": 9.095,
+   "end": 9.734,
+   "value": "C"
+  },
+  {
+   "start": 9.747,
+   "end": 9.856,
+   "value": "A"
+  },
+  {
+   "start": 9.856,
+   "end": 10.23,
+   "value": "B"
+  },
+  {
+   "start": 10.23,
+   "end": 10.515,
+   "value": "F"
+  },
+  {
+   "start": 10.515,
+   "end": 10.658,
+   "value": "B"
+  },
+  {
+   "start": 10.658,
+   "end": 11.604,
+   "value": "X"
+  }
+ ]
+}

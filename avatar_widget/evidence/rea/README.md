@@ -64,6 +64,25 @@ JSON stayed byte-faithful UTF-8.
 5. The re-run console adds one warning — `The powerPreference option is currently ignored when calling
    requestAdapter()` — a WebGPU adapter probe from a third-party tag; no DaveAI host is involved.
 
+## Re-check (2026-11-03, before the feature map in `research/daveai/`)
+
+`scenario_with_interaction.input.json` executed once more, unchanged, into `recheck_2026-11-03/`
+(`rea capture-browser-scenario <file>`; the CLI takes the input as an argument, not on stdin).
+
+| File | Evidence ID | Requests | Scripts | Hosts | WebSocket / worker | non-`www` iamdave hosts |
+|---|---|---|---|---|---|---|
+| `recheck_2026-11-03/with_interaction.json` | `ev_c5b1c9951866770e…` | 331 | 98 | 25 | 0 | none |
+
+1. **First-party script set is identical** to 2026-11-01: the same 36 WordPress / Elementor Pro /
+   Vamtam / jQuery files, `sdk.js` still the Facebook SDK.
+2. **Only vendor rotations differ**: Microsoft Clarity `0.8.72` → `0.8.75` plus a `0.8.77-beta` copy,
+   a new YouTube embed player hash (`11a45ffb` → `4efb8b2c`), a new Google `js/th` challenge script,
+   and `px4.ads.linkedin.com` no longer appears (hosts 26 → 25).
+3. Same 2 attached frames (YouTube), 6 console events (jQuery Migrate, Facebook SDK age, YouTube
+   `postMessage` origin, WebGPU `powerPreference`), 16 failed beacons at navigation (was 14).
+4. Conclusion unchanged: **no DaveAI runtime on the public site.** The feature-level reverse
+   engineering therefore rests on page copy only; see `research/daveai/FEATURES.md`.
+
 ## Limitations recorded by REA
 
 Scenario network records carry no initiator stacks; receipt order does not prove causality. Bodies

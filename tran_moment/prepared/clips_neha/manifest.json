@@ -1,24 +1,134 @@
 {
-  "_note": "Neha reaction set, synthesized from prepared/face.jpg (CGI portrait) with ffmpeg motion — breathing zoom, nods, tilt, lean-in. No real person, no consent issue (licence check for commercial use of the AI portrait still applies, see CONSENT.md). Same keys as clips/manifest.json; a talking-head renderer can replace these files one by one.",
-  "version": 1,
+  "_note": "Neha reaction set generated from prepared/ref_720x1280.png (AI portrait, see CONSENT.md) and installed by tran_moment/make_clips.py. 720x960, 24 fps, muted, ping-pong loops.",
+  "version": 2,
   "set": "neha",
   "crossfade_ms": 350,
   "states": {
-    "idle": ["idle.mp4"],
-    "greeting": ["greeting.mp4"],
-    "listening": ["small_nod.mp4"],
-    "thinking": ["look_up.mp4"]
+    "idle": [
+      "idle.mp4",
+      "relax.mp4"
+    ],
+    "greeting": [
+      "greeting.mp4",
+      "idle.mp4"
+    ],
+    "listening": [
+      "listening.mp4",
+      "small_nod.mp4",
+      "attentive.mp4",
+      "look_down.mp4"
+    ],
+    "thinking": [
+      "look_up.mp4",
+      "look_left.mp4",
+      "look_right.mp4"
+    ],
+    "backchannel": [
+      "head_wobble.mp4",
+      "small_nod.mp4",
+      "agree.mp4"
+    ],
+    "speaking": [
+      "talk_greeting.mp4",
+      "talk_ask.mp4",
+      "talk_explain.mp4",
+      "talk_reassure.mp4",
+      "talk_price.mp4",
+      "talk_booking.mp4",
+      "talk_close.mp4"
+    ]
   },
   "gestures": {
-    "idle": ["idle.mp4"],
-    "pause": ["idle.mp4"],
-    "small_nod": ["small_nod.mp4"],
-    "nod": ["small_nod.mp4", "open_palm.mp4"],
-    "slow_nod": ["slow_nod.mp4"],
-    "tilt_head": ["slow_nod.mp4", "open_palm.mp4"],
-    "open_palm": ["open_palm.mp4"],
-    "both_hands": ["both_hands.mp4"],
-    "lean_in": ["both_hands.mp4"],
-    "look_up": ["look_up.mp4"]
+    "idle": [
+      "idle.mp4",
+      "relax.mp4"
+    ],
+    "pause": [
+      "idle.mp4",
+      "relax.mp4",
+      "look_down.mp4"
+    ],
+    "small_nod": [
+      "small_nod.mp4",
+      "listening.mp4",
+      "attentive.mp4"
+    ],
+    "nod": [
+      "nod.mp4",
+      "small_nod.mp4",
+      "agree.mp4"
+    ],
+    "slow_nod": [
+      "slow_nod.mp4",
+      "thank.mp4",
+      "apologetic.mp4"
+    ],
+    "tilt_head": [
+      "tilt_head.mp4",
+      "slow_nod.mp4",
+      "concerned.mp4"
+    ],
+    "head_wobble": [
+      "head_wobble.mp4",
+      "small_nod.mp4",
+      "agree.mp4"
+    ],
+    "look_up": [
+      "look_up.mp4",
+      "look_left.mp4",
+      "look_right.mp4"
+    ],
+    "open_palm": [
+      "open_palm.mp4",
+      "lean_close.mp4"
+    ],
+    "both_hands": [
+      "both_hands.mp4"
+    ],
+    "lean_in": [
+      "lean_in.mp4",
+      "both_hands.mp4",
+      "lean_close.mp4",
+      "attentive.mp4"
+    ],
+    "greeting": [
+      "greeting.mp4"
+    ],
+    "surprised": [
+      "surprised.mp4"
+    ],
+    "question": [
+      "surprised.mp4"
+    ],
+    "look_left": [
+      "look_left.mp4"
+    ],
+    "look_right": [
+      "look_right.mp4"
+    ],
+    "look_down": [
+      "look_down.mp4"
+    ],
+    "lean_close": [
+      "lean_close.mp4"
+    ],
+    "agree": [
+      "agree.mp4"
+    ],
+    "concerned": [
+      "concerned.mp4"
+    ],
+    "apologetic": [
+      "apologetic.mp4"
+    ],
+    "thank": [
+      "thank.mp4"
+    ],
+    "attentive": [
+      "attentive.mp4"
+    ],
+    "relax": [
+      "relax.mp4"
+    ]
   }
 }

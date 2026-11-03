@@ -162,3 +162,34 @@ node human_bot/web/shot_compact.mjs                  # embed card typed turn + s
 cd kb && npm test                                    # 17 tests incl. hybrid fusion + local vectors
 python human_bot/tools/loadtest.py --users 10 --turns 2
 ```
+
+## 8. Latency review, 2026-11-03 (measured on the live laptop bot, :4001)
+
+| Stage | Measured | Verdict |
+|---|---|---|
+| reaction ("hmm" / "acha" backchannel) | 3-13 ms after /chat | already milliseconds (cached clip) |
+| knowledge (kb hybrid-local) | 14-84 ms direct; 35-315 ms inside a turn under CPU load | fine; now prefetched at /stt so it leaves the critical path |
+| STT (Groq Whisper, 9 s clip) | 418-470 ms | fine; early STT at 350 ms of silence already overlaps it |
+| LLM first token | Groq 0.2-0.5 s when it answers; **429 on the free tier, then OpenAI-compatible 429, then Gemini 8 s timeout -> 9.3 s** before the offline script took over | the real problem: provider quota, not code |
+| TTS first byte | cached 23 ms; fresh Edge clip 1.0-2.2 s | the fixed floor until Azure Speech (persistent connection, ~0.3 s) |
+| offline script answer (all providers down) | 36-141 ms whole turn | the floor for scripted answers |
+
+What "milliseconds" means here: a reaction sound, a cached line and a scripted answer are already in the
+tens of milliseconds. A model-generated spoken answer cannot be: STT 0.3-0.45 s + first token 0.2 s + first
+TTS chunk 0.3-1.0 s is a physical floor of about 0.8-1.6 s, and today's 2.8 s is mostly Edge's connection
+setup plus provider stalls.
+
+Done in this pass:
+- `/stt` starts the kb lookup for its transcript in a background thread; `/chat` with the same text reuses
+  it (Session.prefetch_knowledge / knowledge). Saves the whole kb time whenever the card's early STT fires.
+- Opening interjections ("Acha, ...", "Haan ji, ...", "Bilkul! ...") are emitted as their own first `sentence`
+  the moment the comma arrives, using the warm backchannel clip when one exists, so the customer hears her
+  react before the first fresh Edge clip (~1 s) is ready.
+- `HUMAN_BOT_LLM_TIMEOUT_S=4` (was 8) in the env: a stalled provider is abandoned after 4 s instead of 8.
+
+Still the biggest levers, in order (decisions, not code):
+1. Paid Groq tier (or another fast provider with real quota): removes the 429 stalls that turned 0.5 s turns
+   into 9 s turns during this review.
+2. Azure Speech for TTS with a persistent connection: first audio 1.0-2.2 s -> ~0.3 s.
+3. Streaming ASR (partial transcripts) so retrieval and the model start before the customer stops talking.
+4. Merge `/stt` + `/chat` into one `/turn` request (one round trip less on mobile).

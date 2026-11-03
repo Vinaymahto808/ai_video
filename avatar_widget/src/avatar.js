@@ -90,12 +90,13 @@ export function gestureOrigin(name) {
  */
 const clampNum = (v, lo, hi, d) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
 const IDLE = Object.freeze({
-  driftPitch: clampNum(IDLE_STATS?.micro_std?.pitch * 1.8, 0.3, 1.4, 0.7),   // +- degrees
-  driftRoll:  clampNum(IDLE_STATS?.micro_std?.roll * 1.8, 0.4, 1.6, 1.2),
-  driftDx:    clampNum(IDLE_STATS?.micro_std?.dx * 1.8, 0.2, 1.0, 0.8),      // +- percent
-  retargetMs: clampNum(IDLE_STATS?.retarget_s?.mean * 1000, 2500, 8000, 5500),
+  // Calm budget (2026-11-03): a listener on a video call drifts under a degree and blinks every ~4 s.
+  driftPitch: clampNum(IDLE_STATS?.micro_std?.pitch * 1.8, 0.3, 0.9, 0.6),   // +- degrees
+  driftRoll:  clampNum(IDLE_STATS?.micro_std?.roll * 1.8, 0.3, 1.0, 0.8),
+  driftDx:    clampNum(IDLE_STATS?.micro_std?.dx * 1.8, 0.15, 0.6, 0.5),     // +- percent
+  retargetMs: clampNum(IDLE_STATS?.retarget_s?.mean * 1000, 4000, 9000, 5500),
   retargetJitterMs: clampNum(IDLE_STATS?.retarget_s?.std * 1000, 400, 3000, 1300),
-  blinkMs:    clampNum(IDLE_STATS?.blink_s?.mean * 1000, 1800, 6000, 4000),
+  blinkMs:    clampNum(IDLE_STATS?.blink_s?.mean * 1000, 3000, 6000, 4000),
   blinkJitterMs: clampNum(IDLE_STATS?.blink_s?.std * 1000, 300, 2500, 1200),
   blinkDurMs: clampNum(IDLE_STATS?.blink_s?.dur * 1000, 80, 220, 120),
   breathMs:   clampNum(IDLE_STATS?.breath_period_s * 1000, 2500, 7000, 4600),

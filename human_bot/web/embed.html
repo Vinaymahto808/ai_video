@@ -400,7 +400,7 @@
         if (amp > 0.3 && prevAmp <= 0.3 && Math.random() < 0.5) tiltTo = (Math.random() * 2 - 1) * 0.9; // syllable onset
         prevAmp = amp;
         tilt = sm(tilt, tiltTo * Math.min(1, env * 1.5), 260, dt);
-        nod.style.setProperty("--nod", (env * 3.2).toFixed(2));                      // px down on stressed syllables
+        nod.style.setProperty("--nod", (env * 2.0).toFixed(2));                      // px down on stressed syllables (calm: was 3.2)
         nod.style.setProperty("--tilt", tilt.toFixed(2));                            // slight left/right
         requestAnimationFrame(tick);
       })(performance.now());
@@ -516,7 +516,7 @@
       return;
     }
     stage.classList.remove("composite");
-    if (now >= PUP.nextBlink) { PUP.blinkT = now; PUP.nextBlink = now + 1600 + Math.random() * 2600; if (Math.random() < 0.22) PUP.nextBlink = now + 260 + Math.random() * 160; }
+    if (now >= PUP.nextBlink) { PUP.blinkT = now; PUP.nextBlink = now + 3200 + Math.random() * 2400; if (Math.random() < 0.08) PUP.nextBlink = now + 300 + Math.random() * 160; }   // calm: a blink every 3-5.6 s, rare double
     const dt = now - PUP.blinkT;
     const lid = dt >= 0 && dt < 150 && PUP.pts ? Math.round(Math.sin(Math.PI * dt / 150) * BLINK_STEPS) : 0;
     // Layers, bottom to top: base -> face expression (morph sequence, played as motion) -> brows warp (fades)
@@ -543,8 +543,8 @@
       a.pos = a.target > a.pos ? Math.min(a.target, a.pos + rate * dtF) : Math.max(a.target, a.pos - rate * dtF);
       if (a.pos === 0 && a.target === 0) a.name = null;
     };
-    advance("face", want.face, 260, 180);
-    advance("eyes", want.eyes, want.eyes === "eyes_closed" ? 70 : 140, want.eyes === null && anim.eyes.name === "eyes_closed" ? 90 : 160);
+    advance("face", want.face, 420, 360);   // calm: an expression takes ~0.4 s to arrive and to relax (was 260/180)
+    advance("eyes", want.eyes, want.eyes === "eyes_closed" ? 70 : 220, want.eyes === null && anim.eyes.name === "eyes_closed" ? 90 : 260);
     const frameOf = (ch) => { const a = anim[ch]; if (!a.name) return null; const i = Math.min(X[a.name].frames.length, Math.max(1, Math.round(a.pos))); return a.pos <= 0.01 ? null : { x: X[a.name], i }; };
     const fF = frameOf("face"), fE = frameOf("eyes");
     // brows warp layer: alpha fade (small, no geometry to morph)
@@ -804,7 +804,7 @@
         const k = Math.floor((performance.now() - t0) / 80);
         if (k >= env.length || !LIVE.on) { nod.style.setProperty("--nod", 0); nod.style.setProperty("--tilt", 0); return; }
         const amp = Math.min(1, env[k] / peak); phase += 0.09;
-        nod.style.setProperty("--nod", (amp * 3.5).toFixed(2)); nod.style.setProperty("--tilt", (Math.sin(phase) * amp * 0.9).toFixed(2));
+        nod.style.setProperty("--nod", (amp * 2.2).toFixed(2)); nod.style.setProperty("--tilt", (Math.sin(phase) * amp * 0.6).toFixed(2));   // calm: was 3.5 / 0.9
         raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);

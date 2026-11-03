@@ -76,6 +76,69 @@ REST = {"idle": 800, "pause": 600, "freeze": 120}
 VARIANTS = {"nod": 2, "small_nod": 2, "slow_nod": 1, "head_wobble": 2, "tilt_head": 1, "look_up": 1}
 MINE_SOURCES = ["neha_sample", "presenter", "open_palm", "greeting", "idle", "both_hands", "slow_nod", "small_nod", "look_up"]
 
+# Calm delivery profile (2026-11-03 review: "bahut speed me face moment"). The footage is a presenter talking
+# at a counter, so every mined gesture came out as large and as quick as the clamps allow. A sales advisor on a
+# video call moves a few degrees, slowly. Each gesture is shrunk to its target peak on its primary channel
+# (same factor on every channel, so the shape is kept), side channels are capped, and the duration is
+# stretched. Variants (name__vN) follow their base. Keep targets above the unit-test floors
+# (nod pitch > 1.5, look_up > 0.8, wobble/tilt roll > 1.0, lean zoom > 0.005).
+CALM_TIME_SCALE = 1.35
+CALM_MIN_MS = {"small_nod": 900, "nod": 1100, "slow_nod": 1600, "tilt_head": 1100, "head_wobble": 1400,
+               "look_up": 1100, "lean_in": 1500, "both_hands": 1500, "open_palm": 1600, "greeting": 1800}
+CALM_MAX_MS = 3600
+CALM_PEAK = {  # gesture -> (primary channel, target peak)
+    "small_nod": ("pitch", 2.2), "nod": ("pitch", 3.2), "slow_nod": ("pitch", 3.0), "look_up": ("pitch", 2.4),
+    "tilt_head": ("roll", 2.2), "head_wobble": ("roll", 1.8), "greeting": ("pitch", 2.6), "open_palm": ("pitch", 2.4),
+    "both_hands": ("zoom", 0.02), "lean_in": ("zoom", 0.022),
+}
+CALM_SIDE = {"roll": 1.6, "dx": 0.6, "dy": 0.6, "pitch": 2.6, "zoom": 0.02}   # caps on the non-primary channels
+
+
+def _peak(track: list | None) -> float:
+    return max((abs(v) for _, v in track), default=0.0) if track else 0.0
+
+
+def calm_profile(gestures: dict[str, dict]) -> dict[str, dict]:
+    """Shrink and slow every learned gesture to the calm targets; returns {name: factor} for the report."""
+    applied = {}
+    for name, g in gestures.items():
+        base = name.split("__v")[0]
+        spec = CALM_PEAK.get(base)
+        if not spec:
+            continue
+        ch, target = spec
+        peak = _peak(g.get(ch))
+        f = min(1.0, target / peak) if peak > 1e-9 else 1.0
+        for c in CHANNELS:
+            if c in g:
+                g[c] = [[p, round(v * f, 4)] for p, v in g[c]]
+        for c, cap in CALM_SIDE.items():      # side channels: a nod is not a slide across the frame
+            if c == ch or c not in g:
+                continue
+            pk = _peak(g[c])
+            if pk > cap:
+                g[c] = [[p, round(v * cap / pk, 4)] for p, v in g[c]]
+        g["dur"] = int(min(CALM_MAX_MS, max(CALM_MIN_MS.get(base, 1000), round(g["dur"] * CALM_TIME_SCALE))))
+        applied[name] = round(f, 3)
+    return applied
+
+
+def calm_idle(idle: dict) -> dict:
+    """The footage has no true rest: blink and retarget statistics from talking windows are replaced by
+    textbook resting values (blink every ~4 s, head retarget every ~5.5 s) and the drift is halved."""
+    if not idle:
+        return idle
+    b = idle.get("blink_s", {})
+    if b.get("count", 0) < 10 or b.get("mean", 0) < 2.0:
+        idle["blink_s"] = {"mean": 4.0, "std": 1.2, "dur": 0.14, "count": b.get("count", 0), "note": "replaced: talking footage"}
+    r = idle.get("retarget_s", {})
+    if r.get("mean", 0) < 2.5 or r.get("std", 0) == 0:
+        idle["retarget_s"] = {"mean": 5.5, "std": 1.3, "note": "replaced: talking footage"}
+    ms = idle.get("micro_std", {})
+    idle["micro_std"] = {k: round(v * 0.5, 3) for k, v in ms.items()}
+    idle["note"] = (idle.get("note", "") + " | calm profile: drift halved, blink/retarget set to resting values").strip(" |")
+    return idle
+
 # Window quality gates: the wide shot has a ~33 px face, so tracking spikes must be rejected.
 MIN_FACE_PX = 24
 MAX_STEP_DEG = 4.0     # per-frame |delta pitch| or |delta roll|
@@ -501,12 +564,17 @@ def main() -> int:
             sources[vname] = {"kind": "variant", "of": name, "clip": tr["source"], "window_s": [round(s["t"][i0], 2), round(s["t"][i1 - 1], 2)], "score": round(score, 3)}
             rows.append((vname, f"variant of {name}: mined {src} {s['t'][i0]:.1f}-{s['t'][i1 - 1]:.1f}s", g["dur"], rng))
 
+    calm = calm_profile(gestures)
+    for name, f in calm.items():
+        sources.setdefault(name, {})["calm"] = {"amplitude": f, "dur_ms": gestures[name]["dur"]}
+    rows = [(n, how, gestures[n]["dur"] if n in gestures else d, rng) for n, how, d, rng in rows]
+
     for name, dur in REST.items():
         gestures[name] = {"dur": dur}
         sources[name] = {"kind": "rest"}
         rows.append((name, "rest", dur, {}))
 
-    idle = idle_stats(tracks)
+    idle = calm_idle(idle_stats(tracks))
 
     # ---- write JS module
     def js(o):

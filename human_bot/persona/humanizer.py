@@ -170,6 +170,19 @@ def enforce_budget(text: str, max_words: int = 40) -> str:
     return " ".join(kept)
 
 
+_DETAIL = re.compile(
+    r"\b(in detail|detail mein|detail me|details?|explain|elaborate|step by step|poora batao|pura batao|poori baat|"
+    r"sab kuch batao|samjhao|samjha do|samjha dijiye|kaise hota hai|kaise karte ho|process kya hai|vistaar)\b",
+    re.I,
+)
+
+
+def wants_detail(user_text: str) -> bool:
+    """True when the customer asked for an explanation, so the turn may use the larger word budget
+    (persona.conversation.max_words_detail) instead of the normal cap."""
+    return bool(user_text) and bool(_DETAIL.search(user_text))
+
+
 def humanize(reply: str, max_words: int = 40, language: str = "hinglish", female: bool = True) -> str:
     t = strip_markup(reply)
     t = _BANNED_OPENERS.sub("", t).strip()
