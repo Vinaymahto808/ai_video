@@ -56,3 +56,14 @@ and glance/eyes-closed/wink eyes-only layers (`path_b/expressions/`, `expression
 `expressions_sheet.png`). The card fades expressions over 250 ms (`setReaction` in web/embed.html): warm ->
 smile_warm, enthusiastic -> smile_big, question -> surprised, listening -> soft smile + glances, thinking ->
 glance. For a sharper result generate the grid at a higher resolution (cells are 296x444 here, upscaled 2.2x).
+
+### Morph frames (smooth expression changes)
+
+```
+python tran_moment/path_b/morph_frames.py     # after expressions_from_grid.py; -> path_b/expressions/<name>/fNN.webp
+```
+For every expression the 478 face landmarks of the base and of the expression are interpolated and both
+images are piecewise-affine warped (Delaunay triangles) to each in-between shape, then blended: one frame
+per ~1.5 px of the largest landmark move (6-24 frames, ~1 MB of WebP in total). The card plays the
+sequence forward to show an expression (~260 ms) and backward to relax it; a blink is eyes_closed forward
+(70 ms) then back (90 ms); a new expression waits for the previous one to relax, so the face never jumps.

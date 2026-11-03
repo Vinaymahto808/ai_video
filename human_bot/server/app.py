@@ -750,7 +750,8 @@ class Handler(BaseHTTPRequestHandler):
             # 2D puppet assets (tran_moment/path_b): aligned mouth-shape layers + mouths.json, and the
             # landmark file for eyelids. Whitelisted names only.
             name = path[len("/avatar_puppet/"):]
-            if not re.fullmatch(r"[A-Za-z0-9_]+\.(png|json)", name):
+            # <name>.png | <name>.json | <expression>/fNN.webp (morph frames)
+            if not re.fullmatch(r"[A-Za-z0-9_]+\.(png|json)|[A-Za-z0-9_]+/f\d{2}\.webp", name):
                 return self._json(404, {"error": "no such asset"})
             base = HERE.parents[1] / "tran_moment"
             if name == "face.json":
@@ -776,7 +777,7 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     pass
             self.send_response(200)
-            self.send_header("Content-Type", "image/png" if name.endswith(".png") else "application/json; charset=utf-8")
+            self.send_header("Content-Type", "image/png" if name.endswith(".png") else "image/webp" if name.endswith(".webp") else "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             if name.endswith(".json") or not parse_qs(urlparse(self.path).query).get("v"):
                 self.send_header("Cache-Control", "no-cache, must-revalidate")   # manifests and unversioned images: revalidate

@@ -5,32 +5,169 @@
  },
  "layers": {
   "smile_soft": {
+   "region": "face",
+   "box": [
+    153,
+    108,
+    338,
+    405
+   ],
+   "frames": [
+    "smile_soft/f01.webp",
+    "smile_soft/f02.webp",
+    "smile_soft/f03.webp",
+    "smile_soft/f04.webp",
+    "smile_soft/f05.webp",
+    "smile_soft/f06.webp",
+    "smile_soft/f07.webp"
+   ],
    "file": "smile_soft.png",
-   "region": "face"
+   "max_move_px": 10.5
   },
   "smile_big": {
+   "region": "face",
+   "box": [
+    153,
+    108,
+    338,
+    405
+   ],
+   "frames": [
+    "smile_big/f01.webp",
+    "smile_big/f02.webp",
+    "smile_big/f03.webp",
+    "smile_big/f04.webp",
+    "smile_big/f05.webp",
+    "smile_big/f06.webp",
+    "smile_big/f07.webp",
+    "smile_big/f08.webp",
+    "smile_big/f09.webp",
+    "smile_big/f10.webp"
+   ],
    "file": "smile_big.png",
-   "region": "face"
+   "max_move_px": 14.6
   },
   "surprised": {
+   "region": "face",
+   "box": [
+    153,
+    108,
+    338,
+    405
+   ],
+   "frames": [
+    "surprised/f01.webp",
+    "surprised/f02.webp",
+    "surprised/f03.webp",
+    "surprised/f04.webp",
+    "surprised/f05.webp",
+    "surprised/f06.webp",
+    "surprised/f07.webp",
+    "surprised/f08.webp",
+    "surprised/f09.webp",
+    "surprised/f10.webp",
+    "surprised/f11.webp",
+    "surprised/f12.webp",
+    "surprised/f13.webp",
+    "surprised/f14.webp",
+    "surprised/f15.webp",
+    "surprised/f16.webp",
+    "surprised/f17.webp",
+    "surprised/f18.webp",
+    "surprised/f19.webp"
+   ],
    "file": "surprised.png",
-   "region": "face"
-  },
-  "smile_warm": {
-   "file": "smile_warm.png",
-   "region": "face"
+   "max_move_px": 28.0
   },
   "glance": {
+   "region": "eyes",
+   "box": [
+    161,
+    179,
+    321,
+    108
+   ],
+   "frames": [
+    "glance/f01.webp",
+    "glance/f02.webp",
+    "glance/f03.webp",
+    "glance/f04.webp",
+    "glance/f05.webp",
+    "glance/f06.webp",
+    "glance/f07.webp",
+    "glance/f08.webp",
+    "glance/f09.webp",
+    "glance/f10.webp"
+   ],
    "file": "glance.png",
-   "region": "eyes"
+   "max_move_px": 14.5
+  },
+  "smile_warm": {
+   "region": "face",
+   "box": [
+    153,
+    108,
+    338,
+    405
+   ],
+   "frames": [
+    "smile_warm/f01.webp",
+    "smile_warm/f02.webp",
+    "smile_warm/f03.webp",
+    "smile_warm/f04.webp",
+    "smile_warm/f05.webp",
+    "smile_warm/f06.webp"
+   ],
+   "file": "smile_warm.png",
+   "max_move_px": 5.7
   },
   "eyes_closed": {
+   "region": "eyes",
+   "box": [
+    161,
+    179,
+    321,
+    108
+   ],
+   "frames": [
+    "eyes_closed/f01.webp",
+    "eyes_closed/f02.webp",
+    "eyes_closed/f03.webp",
+    "eyes_closed/f04.webp",
+    "eyes_closed/f05.webp",
+    "eyes_closed/f06.webp",
+    "eyes_closed/f07.webp",
+    "eyes_closed/f08.webp",
+    "eyes_closed/f09.webp",
+    "eyes_closed/f10.webp",
+    "eyes_closed/f11.webp",
+    "eyes_closed/f12.webp",
+    "eyes_closed/f13.webp",
+    "eyes_closed/f14.webp"
+   ],
    "file": "eyes_closed.png",
-   "region": "eyes"
+   "max_move_px": 21.1
   },
   "wink": {
+   "region": "eyes",
+   "box": [
+    161,
+    179,
+    321,
+    108
+   ],
+   "frames": [
+    "wink/f01.webp",
+    "wink/f02.webp",
+    "wink/f03.webp",
+    "wink/f04.webp",
+    "wink/f05.webp",
+    "wink/f06.webp",
+    "wink/f07.webp",
+    "wink/f08.webp"
+   ],
    "file": "wink.png",
-   "region": "eyes"
+   "max_move_px": 12.1
   }
  },
  "moods": {
@@ -44,5 +181,6 @@
   "listening": "smile_soft",
   "question": "surprised"
  },
- "note": "face layers composite over base.png under the speech mouth; eyes layers are used for glances/blinks"
+ "note": "face layers composite over base.png under the speech mouth; eyes layers are used for glances/blinks",
+ "frames_note": "frames[k] = morph base->expression at t=(k+1)/n, cropped to box; play forward to show, backward to relax"
 }
