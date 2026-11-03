@@ -12,6 +12,8 @@ kb/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+# the one exception: the committed crawl snapshot of the public ACR site that seeds a diskless host
+!kb/seed/kb.sqlite
 
 # ---- real-person media kept out of a public repo (consent / copyright) ----
 tran_moment/sample_audio.mp4

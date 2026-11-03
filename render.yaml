@@ -7,15 +7,17 @@ services:
   - type: web
     name: neha-bot
     runtime: python
-    plan: starter                     # the free plan sleeps and breaks the first call's latency
+    # free = preview: sleeps after 15 min idle (first call ~30-50 s), no persistent disk (recordings
+    # vanish on redeploy). For customers: plan starter + the disk block below (see DEPLOYMENT.md).
+    plan: free
     region: singapore                 # closest Render region to Delhi NCR
     buildCommand: pip install edge-tts numpy pillow
     startCommand: python human_bot/server/app.py --host 0.0.0.0 --port $PORT --persona auto-car-repair
     healthCheckPath: /health
-    disk:
-      name: data                      # conversation records + audio (human_bot/data)
-      mountPath: /opt/render/project/src/human_bot/data
-      sizeGB: 5
+    # disk:                           # paid plans only; conversation records + audio (human_bot/data)
+    #   name: data
+    #   mountPath: /opt/render/project/src/human_bot/data
+    #   sizeGB: 5
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.6
@@ -27,7 +29,7 @@ services:
       - key: HUMAN_BOT_SITE_MIRROR
         value: "1"
       - key: HUMAN_BOT_ALLOWED_ORIGINS
-        value: https://autocarrepair.in,https://www.autocarrepair.in,https://YOUR-VERCEL-SITE.vercel.app
+        value: https://autocarrepair.in,https://www.autocarrepair.in,https://avatarwidget-five.vercel.app
       - key: HUMAN_BOT_AVATAR_PROVIDER
         value: puppet
       - key: HUMAN_BOT_VOICE_STYLE
@@ -57,16 +59,18 @@ services:
   - type: web
     name: neha-kb
     runtime: node
-    plan: standard                    # the local embedding model needs ~1 GB RAM
+    # free (512 MB) runs the lexical + Gemini path; the local embedding model wants plan standard (~1 GB).
+    plan: free
     region: singapore
     rootDir: kb
-    buildCommand: npm ci
-    startCommand: node src/server.js
+    buildCommand: npm ci --omit=dev --ignore-scripts
+    # seed.js copies the committed crawl snapshot (seed/kb.sqlite) into data/ when no database exists
+    startCommand: node src/seed.js && node src/server.js
     healthCheckPath: /health
-    disk:
-      name: kbdata                    # kb.sqlite (the only copy of the crawl) + the embedding model cache
-      mountPath: /opt/render/project/src/kb/data
-      sizeGB: 2
+    # disk:                           # paid plans only: kb.sqlite + the embedding model cache survive deploys
+    #   name: kbdata
+    #   mountPath: /opt/render/project/src/kb/data
+    #   sizeGB: 2
     envVars:
       - key: NODE_VERSION
         value: "24"
@@ -77,7 +81,9 @@ services:
       - key: KB_TRUST_PROXY
         value: "1"
       - key: KB_QUERY_PROVIDER
-        value: local
+        value: gemini               # "local" once the service has >= 1 GB RAM (plan standard)
+      - key: KB_LOCAL_MODEL
+        value: ""                   # skip the 130 MB model download on the free plan
       - key: GEMINI_API_KEY
         sync: false
       - key: KB_ADMIN_KEY
