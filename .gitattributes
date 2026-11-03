@@ -1,0 +1,20 @@
+# Line endings: store LF in the repo, check out LF everywhere (Windows editors are fine with LF).
+# Binary media is never touched.
+* text=auto eol=lf
+*.mp4 binary
+*.mp3 binary
+*.wav binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.sqlite binary
+*.tgz binary
+*.zip binary
+*.ipynb text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
