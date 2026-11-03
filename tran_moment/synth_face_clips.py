@@ -43,6 +43,7 @@ GLANCE_IN, GLANCE_OUT = 0.14, 0.16
 BROW_RAMP = 0.15
 MOUTH_FADE = 0.06
 IDLE_SCALE = 1.0      # multiplier on the idle breathing / drift amplitude
+MOUTH_STRENGTH = 1.0  # alpha of a speech mouth shape over the resting mouth (talk clips use ~0.55: less lip/cheek travel)
 
 
 # ---------------------------------------------------------------- assets
@@ -96,18 +97,22 @@ class Kit:
                 layer.putalpha(a)
             im.alpha_composite(layer)
         shape, prev, fade = mouth
+        ms = MOUTH_STRENGTH                                   # speech shapes blend over the resting mouth, not a full patch swap
         if shape == "rest" and prev and prev != "rest" and fade < 0.99:   # closing: the last shape fades out
             pl = self.mouth[prev].copy()
-            pl.putalpha(pl.split()[3].point(lambda v: int(v * (1 - fade))))
+            pl.putalpha(pl.split()[3].point(lambda v: int(v * (1 - fade) * ms)))
             im.alpha_composite(pl)
         if shape != "rest":
             cur = self.mouth[shape]
             if prev and prev != "rest" and fade < 0.99:
                 pl = self.mouth[prev].copy()
-                pl.putalpha(pl.split()[3].point(lambda v: int(v * (1 - fade))))
+                pl.putalpha(pl.split()[3].point(lambda v: int(v * (1 - fade) * ms)))
                 im.alpha_composite(pl)
                 cur = cur.copy()
-                cur.putalpha(cur.split()[3].point(lambda v: int(v * fade)))
+                cur.putalpha(cur.split()[3].point(lambda v: int(v * fade * ms)))
+            elif ms < 0.99:
+                cur = cur.copy()
+                cur.putalpha(cur.split()[3].point(lambda v: int(v * ms)))
             im.alpha_composite(cur)
         if eyes:
             x = self.expr[eyes[0]]

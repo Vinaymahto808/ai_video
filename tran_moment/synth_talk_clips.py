@@ -39,7 +39,7 @@ PROSODY = {"neutral": ("-8%", "+0Hz"), "warm": ("-8%", "+2Hz"), "enthusiastic": 
 
 # calm face profile: slower expression changes, longer lip crossfades, smaller gestures, fewer blinks
 CALM = {"EXPR_IN": 0.45, "EXPR_OUT": 0.40, "GLANCE_IN": 0.22, "GLANCE_OUT": 0.26, "BROW_RAMP": 0.30,
-        "MOUTH_FADE": 0.09, "IDLE_SCALE": 0.55}
+        "MOUTH_FADE": 0.09, "IDLE_SCALE": 0.55, "MOUTH_STRENGTH": 0.55}   # 0.55: lips form the word, cheeks stay put
 NOD_AMP, NOD_SLOW = 0.85, 1.15        # the learned tracks are already calm (fit_gestures CALM profile); a touch softer and slower here
 BLINK_EVERY = (3.6, 5.2)              # seconds between blinks (min, max)
 
@@ -184,7 +184,8 @@ def plan(name: str, emotion: str, cues: list[dict], duration: float, tracks: dic
         blinks.append(round(t, 2))
         lo, hi = BLINK_EVERY
         t += lo + ((hash(name) >> (len(blinks) * 3)) % 16) / 10.0 * (hi - lo) / 1.6
-    expr = {"warm": "smile_warm", "enthusiastic": "smile_big", "neutral": "smile_soft", "thinking": "smile_soft", "concerned": None}[emotion]
+    # while speaking only the soft smile: the warm / big smiles move the cheeks on top of the lips
+    expr = {"warm": "smile_soft", "enthusiastic": "smile_warm", "neutral": "smile_soft", "thinking": "smile_soft", "concerned": None}[emotion]
     exprs = [(expr, 0.15, duration - 0.5)] if expr else []
     brows = []
     if "?" in LINES[[n for n, _, _ in LINES].index(name)][2]:
