@@ -147,3 +147,21 @@ submission; the spoken result comes from the backend's answer.
 
 Fields sent: `name, phone, location, service (site category slug), source, message, custom_data[make|model|registration|conversation_id]`
 (see `human_bot/crm/acr_leads.py`). `/health` (loopback) shows `leads.mode` and the number of dry runs.
+
+## Vercel (static) + Render (servers) — the split that works (2026-11-03)
+
+A Vercel deploy of this repo showed `404 NOT_FOUND` because the repository root had no page and Vercel can
+only serve files. The repo now has `index.html` (landing page: enter the bot's HTTPS address once, open the
+widget demo or the embed card, copy the embed snippet) and `vercel.json` (`/widget` → the demo). Import the
+repo in Vercel with **no build command and the root directory as output**; that is all.
+
+The brain cannot run on Vercel: `human_bot` (Python) and `kb` (Node + 1 GB for the local embedding model)
+need a real host. `render.yaml` is a Render blueprint for both (region Singapore, persistent disks for
+`human_bot/data` and `kb/data`, keys entered in the dashboard, never committed). After the first deploy:
+
+1. Put the bot URL (e.g. `https://neha-bot.onrender.com`) into the Vercel landing page, or as
+   `data-api` on the dealer site's script tag.
+2. Add the Vercel origin and the dealer origins to `HUMAN_BOT_ALLOWED_ORIGINS` on the bot service.
+3. Upload `kb/data/kb.sqlite` (the only copy of the crawl) to the kb disk once, or run a crawl there with
+   `KB_ADMIN_KEY`.
+Any VPS with Caddy (section 4) works the same way; Render is just the no-ops option.

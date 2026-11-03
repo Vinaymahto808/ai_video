@@ -1,0 +1,81 @@
+# Render blueprint: the two servers the static site (Vercel) talks to.
+# Vercel hosts only files; the Python bot and the Node knowledge service need a real host like this.
+#   1. Render dashboard -> New -> Blueprint -> this repo.
+#   2. Fill the env vars marked sync:false (keys) in the dashboard. Never commit them.
+#   3. Put the bot's public URL (https://neha-bot.onrender.com) into the Vercel landing page / data-api.
+services:
+  - type: web
+    name: neha-bot
+    runtime: python
+    plan: starter                     # the free plan sleeps and breaks the first call's latency
+    region: singapore                 # closest Render region to Delhi NCR
+    buildCommand: pip install edge-tts numpy pillow
+    startCommand: python human_bot/server/app.py --host 0.0.0.0 --port $PORT --persona auto-car-repair
+    healthCheckPath: /health
+    disk:
+      name: data                      # conversation records + audio (human_bot/data)
+      mountPath: /opt/render/project/src/human_bot/data
+      sizeGB: 5
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.6
+      - key: HUMAN_BOT_BEHIND_PROXY
+        value: "1"
+      - key: HUMAN_BOT_SITE_MIRROR
+        value: "0"
+      - key: HUMAN_BOT_ALLOWED_ORIGINS
+        value: https://autocarrepair.in,https://www.autocarrepair.in,https://YOUR-VERCEL-SITE.vercel.app
+      - key: HUMAN_BOT_AVATAR_PROVIDER
+        value: puppet
+      - key: HUMAN_BOT_VOICE_STYLE
+        value: hindi
+      - key: HUMAN_BOT_RECORD
+        value: "1"
+      - key: ACR_LEADS_MODE
+        value: dry
+      - key: KB_URL
+        fromService:
+          type: web
+          name: neha-kb
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SIMLI_API_KEY
+        sync: false
+      - key: HUMAN_BOT_ADMIN_KEY
+        generateValue: true
+      - key: KB_ADMIN_KEY
+        sync: false
+
+  - type: web
+    name: neha-kb
+    runtime: node
+    plan: standard                    # the local embedding model needs ~1 GB RAM
+    region: singapore
+    rootDir: kb
+    buildCommand: npm ci
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    disk:
+      name: kbdata                    # kb.sqlite (the only copy of the crawl) + the embedding model cache
+      mountPath: /opt/render/project/src/kb/data
+      sizeGB: 2
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: KB_HOST
+        value: 0.0.0.0
+      - key: KB_PORT
+        value: "10000"
+      - key: KB_TRUST_PROXY
+        value: "1"
+      - key: KB_QUERY_PROVIDER
+        value: local
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: KB_ADMIN_KEY
+        sync: false

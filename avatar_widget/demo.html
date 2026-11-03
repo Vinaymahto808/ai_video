@@ -29,9 +29,9 @@
   // dev convenience: ?api=http://127.0.0.1:4002 switches the bot origin; ?ws=ws://127.0.0.1:4101
   // routes session/chat through tools/ws-shim.mjs instead of SSE. The persona comes from data-persona.
   var q = new URLSearchParams(location.search);
-  var api = q.get("api") || "http://127.0.0.1:4001";
+  var api = q.get("api") || localStorage.getItem("neha_api_base") || "http://127.0.0.1:4001";
   var s = document.createElement("script");
-  s.src = location.origin + "/loader.js";
+  s.src = new URL("loader.js", location.href).href;   // next to this page: works at :4300 (root) and under /avatar_widget/ on a static host
   s.setAttribute("data-api", api);
   s.setAttribute("data-persona", q.get("persona") || "auto-car-repair");
   s.setAttribute("data-label", "Talk to Neha");

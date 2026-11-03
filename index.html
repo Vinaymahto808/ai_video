@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neha · AI video service advisor (Auto Car Repair)</title>
+<style>
+  body { margin: 0; font: 16px/1.55 system-ui, -apple-system, Segoe UI, sans-serif; color: #1b2430; background: #f6f8fb; }
+  header { background: #0b2f6b; color: #fff; padding: 20px 28px; }
+  header b { font-size: 18px; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 20px 120px; }
+  .card { background: #fff; border: 1px solid #e3e8ef; border-radius: 14px; padding: 18px 20px; margin: 16px 0; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input { width: 100%; box-sizing: border-box; font: inherit; padding: 10px 12px; border: 1px solid #c9d2df; border-radius: 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  button, a.btn { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 999px; border: 0; cursor: pointer; background: #0b2f6b; color: #fff; text-decoration: none; display: inline-block; }
+  button.secondary, a.secondary { background: #e9eef7; color: #0b2f6b; }
+  code { background: #eef1f6; padding: 2px 6px; border-radius: 6px; font-size: 14px; }
+  .ok { color: #157a4a; } .bad { color: #b42318; }
+  small { color: #5b6677; }
+</style>
+</head>
+<body>
+<header><b>Neha</b> · AI video service advisor for Auto Car Repair</header>
+<main>
+  <div class="card">
+    <p>This static site hosts the <b>widget files</b> only. The brain (speech, knowledge, voice, recording) is the
+    <code>human_bot</code> server, which runs on a Python host (VPS, Render, Railway), not here. Enter its public
+    HTTPS address once; the demos below use it.</p>
+    <label for="api">Bot server (API) address</label>
+    <input id="api" placeholder="https://bot.yourdomain.in" autocomplete="off">
+    <div class="row">
+      <button onclick="save()">Save</button>
+      <button class="secondary" onclick="check()">Check connection</button>
+      <span id="status"></span>
+    </div>
+    <small>Saved in this browser only. The bot must list this site's origin in <code>HUMAN_BOT_ALLOWED_ORIGINS</code>.</small>
+  </div>
+
+  <div class="card">
+    <b>1. Voice video widget</b> (one script tag, voice only, the launcher dealers embed)
+    <div class="row"><a class="btn" id="go-widget" href="#" onclick="return open('avatar_widget/demo.html?api=')">Open widget demo</a></div>
+  </div>
+  <div class="card">
+    <b>2. Embed card</b> (text + voice card with the puppet; served by the bot host itself)
+    <div class="row"><a class="btn" id="go-card" href="#" onclick="return open('{api}/embed?persona=auto-car-repair')">Open embed card</a>
+      <a class="btn secondary" href="#" onclick="return open('{api}/demo.html')">Dealer page with the card</a></div>
+  </div>
+  <div class="card">
+    <b>Embed on a dealer site</b>
+    <pre><code id="snippet">&lt;script src="https://THIS-SITE/avatar_widget/loader.js" data-api="https://BOT-HOST" data-persona="auto-car-repair" defer&gt;&lt;/script&gt;</code></pre>
+    <small>Docs: DEPLOYMENT.md, CODE_MAP.md and ARCHITECTURE.md in the repository.</small>
+  </div>
+</main>
+<script>
+  var KEY = "neha_api_base";
+  var el = document.getElementById("api");
+  el.value = localStorage.getItem(KEY) || "";
+  function base() { return (el.value || "").trim().replace(/\/+$/, ""); }
+  function save() { localStorage.setItem(KEY, base()); document.getElementById("status").textContent = "saved"; render(); }
+  function render() {
+    var b = base() || "https://BOT-HOST";
+    document.getElementById("snippet").textContent = '<script src="' + location.origin + '/avatar_widget/loader.js" data-api="' + b + '" data-persona="auto-car-repair" defer><\/script>';
+  }
+  function open(path) {
+    var b = base();
+    if (!b) { alert("Pehle bot server ka address daaliye (https://...)"); el.focus(); return false; }
+    var url = path.indexOf("{api}") === 0 ? path.replace("{api}", b) : path + encodeURIComponent(b);
+    location.href = url; return false;
+  }
+  async function check() {
+    var s = document.getElementById("status"); var b = base();
+    if (!b) { s.textContent = "address missing"; s.className = "bad"; return; }
+    s.textContent = "checking…"; s.className = "";
+    try {
+      var r = await fetch(b + "/health", { mode: "cors" }); var j = await r.json();
+      s.textContent = j.ok ? "connected: bot ok" : "reachable, but degraded: " + (j.degraded || []).join(", "); s.className = j.ok ? "ok" : "bad";
+    } catch (e) { s.textContent = "not reachable (CORS/HTTPS/origin not allowed?)"; s.className = "bad"; }
+  }
+  render();
+</script>
+</body>
+</html>
