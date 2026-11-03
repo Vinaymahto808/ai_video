@@ -477,18 +477,25 @@
       // as a morph sequence base -> expression (frames cropped to `box`), so a change of expression is
       // played as motion instead of cross-faded. A layer without frames is one full-canvas image.
       PUP.expr = {}; PUP.exprMeta = ex?.layers || {}; PUP.moods = ex?.moods || {};
-      await Promise.all(Object.entries(PUP.exprMeta).map(async ([name, l]) => {
-        try {
-          if (l.frames?.length) {
-            const frames = await Promise.all(l.frames.map(load));
-            PUP.expr[name] = { frames, box: l.box || [0, 0, PUP.cvs.width, PUP.cvs.height], region: l.region };
-          } else {
-            PUP.expr[name] = { frames: [await load(l.file)], box: [0, 0, PUP.cvs.width, PUP.cvs.height], region: l.region };
-          }
-        } catch (e) { /* skipped */ }
-      }));
-      PUP.anim = { face: { name: null, pos: 0, target: 0 }, eyes: { name: null, pos: 0, target: 0 } };
-      PUP.want = { face: null, eyes: null };
+      PUP.anim = { face: { name: null, pos: 0, target: 0 }, eyes: { name: null, pos: 0, target: 0 }, brows: { name: null, pos: 0, target: 0 } };
+      PUP.want = { face: null, eyes: null, brows: null };
+      // The 245 morph frames (~2 MB) stream in AFTER the face is up: the portrait, lips and blink are enough
+      // for the first seconds; each sequence joins the puppet the moment its frames are all here (the
+      // sequencer only plays what exists in PUP.expr). Order: the greeting smile and the blink first.
+      const first = ["smile_warm", "eyes_closed", "smile_soft", "brows_up", "gaze_up"];
+      const order = Object.entries(PUP.exprMeta).sort(([a], [b]) => (first.indexOf(a) + 99) % 100 - (first.indexOf(b) + 99) % 100);
+      PUP.framesReady = (async () => {
+        for (const [name, l] of order) {
+          try {
+            if (l.frames?.length) {
+              const frames = await Promise.all(l.frames.map(load));
+              PUP.expr[name] = { frames, box: l.box || [0, 0, PUP.cvs.width, PUP.cvs.height], region: l.region };
+            } else {
+              PUP.expr[name] = { frames: [await load(l.file)], box: [0, 0, PUP.cvs.width, PUP.cvs.height], region: l.region };
+            }
+          } catch (e) { /* skipped */ }
+        }
+      })();
     } catch (e) { return false; }
     PUP.cfg = cfg; PUP.pts = face?.points || null;
     PUP.cvs.width = cfg.canvas?.width || PUP.base.naturalWidth; PUP.cvs.height = cfg.canvas?.height || PUP.base.naturalHeight;

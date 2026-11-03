@@ -49,7 +49,12 @@ export function importBundle(store, siteId, rows) {
     store.assertModelCompatible(siteId, r.model, r.dim);
     const page = { url: r.url, canonical: r.url, title: r.title, description: r.description, pageType: "qa", lang: r.lang, contentHash: r.page_hash };
     const chunk = { index: 0, heading: r.heading, text: r.text, hash: r.chunk_hash, vec: decodeVec16(r.vec16, r.dim) };
-    store.replacePage({ websiteId: siteId, page, chunks: [chunk], model: r.model, dim: r.dim, jobId: null, httpStatus: 200 });
+    const pageId = store.replacePage({ websiteId: siteId, page, chunks: [chunk], model: r.model, dim: r.dim, jobId: null, httpStatus: 200 });
+    if (r.local16 && r.local_model) {  // local CPU-model vector too, so a host never embeds at boot
+      const cid = store.db.prepare("SELECT id FROM chunks WHERE page_id = ? AND chunk_index = 0").get(pageId)?.id;
+      const lv = decodeVec16(r.local16, r.local_dim);
+      if (cid) store.q.insertLocal.run(cid, r.local_model, r.local_dim, Buffer.from(lv.buffer, lv.byteOffset, lv.byteLength));
+    }
     imported++;
   }
   if (imported) store.checkpoint();
@@ -78,14 +83,14 @@ function exportBundle(siteId) {
   const store = new KnowledgeStore(settings.dbPath);
   try {
     const rows = store.db.prepare(`SELECT p.url, p.title, p.description, p.lang, p.content_hash AS page_hash, c.heading, c.text,
-        c.content_hash AS chunk_hash, c.embedding, c.dim, c.model FROM pages p JOIN chunks c ON c.page_id = p.id
+        c.content_hash AS chunk_hash, c.embedding, c.dim, c.model, v.embedding AS local_embedding, v.dim AS local_dim, v.model AS local_model
+        FROM pages p JOIN chunks c ON c.page_id = p.id LEFT JOIN chunk_vectors v ON v.chunk_id = c.id
         WHERE p.website_id = ? AND p.page_type = 'qa' AND p.status = 'active' ORDER BY p.id`).all(siteId);
+    const half = (buf, dim) => { const f32 = new Float32Array(buf.buffer, buf.byteOffset, dim); const h = Buffer.alloc(dim * 2); for (let i = 0; i < dim; i++) h.writeUInt16LE(f32to16(f32[i]), i * 2); return h.toString("base64"); };
     const lines = rows.map((r) => {
-      const f32 = new Float32Array(r.embedding.buffer, r.embedding.byteOffset, r.dim);
-      const h = Buffer.alloc(r.dim * 2);
-      for (let i = 0; i < r.dim; i++) h.writeUInt16LE(f32to16(f32[i]), i * 2);
-      const { embedding, ...rest } = r; // eslint-disable-line no-unused-vars
-      return JSON.stringify({ ...rest, vec16: h.toString("base64") });
+      const { embedding, local_embedding, ...rest } = r; // eslint-disable-line no-unused-vars
+      const extra = local_embedding ? { local16: half(local_embedding, r.local_dim) } : { local_dim: undefined, local_model: undefined };
+      return JSON.stringify({ ...rest, vec16: half(embedding, r.dim), ...extra });
     });
     process.stdout.write(gzipSync(Buffer.from(lines.join("\n"), "utf8"), { level: 9 }).toString("base64"));
     process.stderr.write(`exported ${rows.length} qa pages\n`);

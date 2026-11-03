@@ -18,6 +18,7 @@ post-call analysis) stays identical.
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import re
@@ -951,16 +952,34 @@ class Handler(BaseHTTPRequestHandler):
         if f is not None and f.is_file():
             body = f.read_bytes()
             ctype = STATIC_TYPES.get(f.suffix, "application/octet-stream")
+            text = f.suffix in (".html", ".js", ".css", ".json", ".svg")
+            etag = '"%x-%x"' % (f.stat().st_mtime_ns, len(body))
+            # Widget code and pages change often during development: browsers revalidate on every load
+            # (ETag -> 304, no body) so a reload always shows the current card. Media stays cacheable,
+            # except the portrait itself, which must follow a rebuild immediately.
+            if text or path == "/avatar.jpg":
+                if self.headers.get("If-None-Match") == etag:
+                    self.send_response(304)
+                    self.send_header("ETag", etag)
+                    self.send_header("Cache-Control", "no-cache, must-revalidate")
+                    self._cors()
+                    self.end_headers()
+                    return None
+            # text assets gzip 3-4x (the 93 KB card is ~25 KB on the wire): less time on a phone network
+            encoding = None
+            if text and len(body) > 2048 and "gzip" in (self.headers.get("Accept-Encoding") or ""):
+                body = gzip.compress(body, 6)
+                encoding = "gzip"
             self.send_response(200)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
+            if encoding:
+                self.send_header("Content-Encoding", encoding)
+                self.send_header("Vary", "Accept-Encoding")
             self._cors()
-            # Widget code and pages change often during development: make browsers revalidate on
-            # every load so a reload always shows the current card. Media stays cacheable, except the
-            # portrait itself, which must follow a rebuild immediately.
-            if f.suffix in (".html", ".js", ".css") or path == "/avatar.jpg":
+            if text or path == "/avatar.jpg":
                 self.send_header("Cache-Control", "no-cache, must-revalidate")
-                self.send_header("ETag", '"%x-%x"' % (f.stat().st_mtime_ns, len(body)))
+                self.send_header("ETag", etag)
             else:
                 self.send_header("Cache-Control", "public, max-age=3600")
             self.end_headers()
