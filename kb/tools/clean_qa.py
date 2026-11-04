@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import re
 import unicodedata
@@ -44,7 +45,12 @@ def norm(s: str) -> str:
     return s
 
 
+# whole sentences that only record that nothing was said on the call: not knowledge
+JUNK_SENT = re.compile(r"(?:^|(?<=[.!?]\s))(?:[^.!?]{0,70}?)\b(?:nahi bataya(?: gaya| ja saka)?|nahi di(?: gayi)?|not (?:given|provided|stated|disclosed|shared)|was not (?:given|provided|stated))\b[^.!?]*[.!?]?\s*", re.I)
+
+
 def strip_meta(s: str) -> str:
+    s = JUNK_SENT.sub("", s)
     for rx, rep in META_RE:
         s = rx.sub(rep, s)
     s = re.sub(r"\s+([,.;:?!])", r"\1", s)
@@ -121,7 +127,9 @@ def main() -> None:
             third = bool(THIRD_RE.search(r["answer"]) or THIRD_RE.search(r.get("answer_extra", "")))
             price = bool(PRICE_RE.search(r["answer"]))
             stats["third_person"] += third; stats["price"] += price
-            w.writerow({"id": f"qa-{i:03d}-{slug(r['question_en'] or r['question'])}", "category": r["category"], "question": r["question"],
+            # stable id: a hash of the question, not the row position, so edits or drops never re-key other rows
+            qid = "qa-" + hashlib.sha1((r["question_en"] or r["question"]).lower().encode("utf-8")).hexdigest()[:8] + "-" + slug(r["question_en"] or r["question"], 40)
+            w.writerow({"id": qid, "category": r["category"], "question": r["question"],
                         "aliases": " || ".join(dict.fromkeys(r["aliases"])), "answer": r["answer"], "answer_extra": r.get("answer_extra", ""),
                         "question_en": r["question_en"], "answer_en": r["answer_en"], "times_seen": r["times_seen"],
                         "batches": ",".join(sorted(b for b in r["batches"] if b)), "needs_voice": int(third), "has_price": int(price),

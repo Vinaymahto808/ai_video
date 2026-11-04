@@ -342,11 +342,12 @@ class OfflineServiceBrain(OfflineBrain):
         (r"\b(battery|tyre|tire|puncture|wheel|alignment|balancing)\b", "battery and tyre service"),
         (r"\b(light|headlight|glass|windshield|wiper|mirror)\b", "lights and glass work"),
         (r"\b(detail|detailing|polish|wash|ceramic|coating|cleaning)\w*", "detailing"),
-        (r"\b(insurance|claim|accident|cashless)\b", "insurance claim repair"),
+        (r"\b(insurance|insurence|insurans|bima|beema|claim|clam|claime|clame|accident|cashless|tuta|toota)\b", "insurance claim repair"),
         (r"\b(service|servicing|oil|filter|periodic|general check|checkup|check-up)\b", "periodic service"),
     )
     _INFO = re.compile(
-        r"\b(price|prices|kitna|kitne|kitni|cost|charge|charges|rate|rates|quote|estimate|offer|discount|"
+        r"\b(price|prices|kitna|kitne|kitni|cost|charge|charges|chrg|rate|rates|quote|estimate|offer|discount|"
+        r"kharcha|kharch|paisa|paise|rupay|rupaye|rupees|padega|prega|pdega|lagega|lgega|lagenge|"
         r"timing|timings|time|open|close|khula|band|hours|address|kahan|kaha|where|location|branch|"
         r"warranty|guarantee|contact|number|phone)\b"
     )
@@ -423,11 +424,30 @@ class OfflineServiceBrain(OfflineBrain):
         return (f"{s['name']} ji, {car} ki {s['service']}, {s['area']} se {s['when']} pickup, number {digits}. "
                 "Main yeh request bhej doon?")
 
-    def _from_website(self) -> str | None:
-        """First retrieved passage, trimmed to a spoken length; None when nothing was retrieved."""
+    _STOP = {"kitna", "kitne", "kitni", "price", "kharcha", "padega", "lagega", "karne", "karna", "hoga", "hota", "hai", "mein", "kya",
+             "paisa", "paise", "rupees", "cost", "charge", "rate", "aapke", "yahan", "mere", "meri", "gaadi", "gadi", "car"}
+
+    def _from_website(self, user: str = "") -> str | None:
+        """First retrieved passage that is about the thing asked, trimmed to a spoken length; None otherwise.
+        A price question must not be answered with another service's price: the hit has to share a content
+        word (battery, claim, painting...) with the question, or it is skipped."""
+        words = {w.strip(".,!?;:()\"'") for w in (user or "").lower().split()}
+        keys = {w for w in words if len(w) >= 4 and w not in self._STOP}
+        claim_q = bool(keys & {"claim", "insurance", "cashless"})
         for h in self.context or []:
+            if keys:
+                head = ((h.get("heading") or "") + " " + (h.get("title") or "")).lower()
+                blob = head + " " + (h.get("text") or "").lower()
+                if not any(k in blob for k in keys):
+                    continue
+                if claim_q and "claim" not in head:   # a claim question is answered by a claim row, not a towing/RSA aside
+                    continue
             words = " ".join((h.get("text") or "").split()).split(" ")
             if len(words) < 4:
+                continue
+            first_line = (h.get("text") or "").split("\n", 1)[0]
+            # a call note that records "nothing was said" or still speaks of the agent is not an answer to give
+            if re.search(r"\b(agent|advisor) (ne|customer|workshop)|nahi bataya|not (given|provided|stated)|call mein nahi", first_line, re.I):
                 continue
             if (h.get("page_type") or "") == "qa":
                 # customer-call knowledge (kb/src/ingest_qa.js): the first line is already Neha's own answer
@@ -440,7 +460,35 @@ class OfflineServiceBrain(OfflineBrain):
         return None
 
     # -- turn -----------------------------------------------------------------------
+    # Typed Hinglish is full of misspellings ("clam", "prega", "servic"): map the common ones onto the
+    # vocabulary the rules know, and fuzzy-match longer words against the keyword list (one wrong letter).
+    _TYPO = {"clam": "claim", "claime": "claim", "clame": "claim", "insurence": "insurance", "insurans": "insurance",
+             "prega": "padega", "pdega": "padega", "lgega": "lagega", "kharch": "kharcha", "servic": "service", "servce": "service",
+             "sarvice": "service", "batry": "battery", "batery": "battery", "tyer": "tyre", "tire": "tyre", "brek": "brake",
+             "cluch": "clutch", "pikup": "pickup", "pick-up": "pickup", "warrenty": "warranty", "warantee": "warranty",
+             "garanty": "guarantee", "acident": "accident", "paintng": "painting", "estimat": "estimate"}
+    _VOCAB = ("insurance", "claim", "cashless", "service", "servicing", "pickup", "price", "warranty", "guarantee", "battery",
+              "tyre", "brake", "clutch", "denting", "painting", "engine", "gearbox", "suspension", "accident", "estimate",
+              "discount", "offer", "timing", "address", "location", "booking", "appointment", "repair", "problem")
+
+    @classmethod
+    def normalise(cls, text: str) -> str:
+        import difflib  # noqa: PLC0415
+        out = []
+        for w in text.lower().split():
+            core = w.strip(".,!?;:()\"'")
+            if not core:
+                out.append(w)
+                continue
+            fixed = cls._TYPO.get(core)
+            if fixed is None and len(core) >= 5 and core not in cls._VOCAB and core.isalpha():
+                m = difflib.get_close_matches(core, cls._VOCAB, n=1, cutoff=0.84)
+                fixed = m[0] if m else None
+            out.append(w.replace(core, fixed) if fixed else w)
+        return " ".join(out)
+
     def reply(self, user: str) -> str:
+        user = self.normalise(user)
         before = dict(self.slots)
         self._remember(user)
         new = [k for k in self.slots if before.get(k) != self.slots.get(k)]  # facts this turn added
@@ -466,9 +514,13 @@ class OfflineServiceBrain(OfflineBrain):
             return "Haan ji, free pickup and drop hai. " + self._next_question()
 
         if self._INFO.search(t):
-            web = self._from_website()
+            web = self._from_website(t)
             if web:
                 return web
+            if re.search(r"\b(insurance|claim|cashless|accident)\b", t):
+                return ("Claim ka kaam cashless hota hai: insurance company ka surveyor hum coordinate karte hain, aap sirf policy ke "
+                        "hisaab se deductible aur depreciation (agar zero-dep nahi hai) dete hain. Exact amount survey ke baad pata chalta "
+                        "hai. Policy aur damage ki photo WhatsApp kar dijiye. " + self._next_question())
             if re.search(r"\b(address|kahan|kaha|where|location|branch)\b", t):
                 return (f"Hamare workshops {', '.join(self.areas[:-1])} aur {self.areas[-1]} mein hain. "
                         "Aap kis area mein hain? Main nearest workshop ka address bhijwa deti hoon.")

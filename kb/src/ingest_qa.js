@@ -95,6 +95,15 @@ async function main() {
       });
       log.info("qa indexed", { done: written, of: todo.length });
     }
+    // rows that left the sheet (merged, dropped, re-keyed) must leave the index too: delete qa pages not in it
+    const keep = new Set(items.map((it) => it.page.url));
+    const stale = store.db.prepare("SELECT id, url FROM pages WHERE website_id = ? AND page_type = 'qa'").all(site.id).filter((p) => !keep.has(p.url));
+    if (stale.length) {
+      const del = store.db.prepare("DELETE FROM pages WHERE id = ?");   // chunks and vectors cascade (foreign_keys=ON)
+      store.db.exec("BEGIN"); try { for (const p of stale) del.run(p.id); store.db.exec("COMMIT"); } catch (e) { store.db.exec("ROLLBACK"); throw e; }
+      store.bump(site.id);
+      log.info("stale qa pages removed", { removed: stale.length });
+    }
     // local vectors for the hybrid-local path (same convention as server startup; resumable)
     if (LOCAL_MODEL && (await loadLocal())) {
       const n = await store.ensureLocalVectors(site.id, LOCAL_MODEL, LOCAL_DIM, (rs) => embedTextsLocal(rs));
