@@ -60,6 +60,7 @@ implements most of and which this folder packages cleanly:
 | Tenant/persona selection at embed time | one bundle, many brands | `data-persona`, `data-api` |
 | Explicit turn state machine with barge-in | voice UX falls apart without it | `src/session.js` |
 | Sentence-level streaming so speech starts in ~1 s | perceived latency | `src/transport.js` (SSE) + `src/audio.js` queue |
+| First clause flushed before the sentence ends; adaptive endpointing | ~150-300 ms off every turn | `human_bot/persona/humanizer.py`, `src/audio.js` |
 | Server-side secrets for the avatar vendor | API keys never in the browser | `src/avatar.js` via human_bot `/avatar/*` relay |
 | Graceful degradation | WebRTC blocked, no mic, no TTS, no STT | live → puppet; server TTS → browser; server STT → Web Speech |
 | Page context in, lead signal out | sales value of the widget | `aw:ctx` / `aw:lead` bridge messages |
@@ -264,6 +265,29 @@ iframe → `/health` → `/avatar/start` → `/session` → LiveKit room in Indi
 `barge-in → user → state → backchannel ("acha") → sources → sentence ×2 → final`, and teardown
 released the room. No page errors.
 
+### Latency work (2026-11-04)
+
+Three groups of changes, all on the path a customer actually feels. Times are milliseconds to first
+audible word, not averages.
+
+| Change | Where | Measured / expected |
+|---|---|---|
+| Avatar mounts **in parallel** with the call; `aw:ready` no longer waits for the live first frame, `aw:mode` follows if it lands | `src/widget.js` | removes the 1 000-3 000 ms Simli mount that used to sit in front of the greeting (measured earlier against Simli; not re-run today — the provider quota is exhausted) |
+| Adaptive endpoint: `silenceMs` 700 is now a ceiling, `fastSilenceMs` 450 the normal end, `earlyMs` 350 → 200 | `src/audio.js` (`createGate`, `Mic`) | gate unit test: `end` 460 ms after the last loud frame instead of 700 (**-240 ms** per turn); a fading tail keeps waiting, a noisy room keeps the ceiling |
+| A complete early transcript can end the turn at `minSilenceMs` 300 (`looksComplete`); a transcript ending on a connector (`aur`, `ki`, `ka`, `of`) cannot | `src/audio.js`, `test/unit/mic-gate.test.mjs` | `requestEnd` unit-test verified; saves up to another 150 ms when Whisper is fast |
+| First clause (3-10 words, comma/joiner) flushed before the sentence finishes | `human_bot/persona/humanizer.py` (`split_first_phrase`), `app.py` `/chat` loop | 6 unit tests; the first TTS clip now covers ~8 words instead of a whole sentence (~150-300 ms earlier audio on a fresh sentence) |
+| Warm TTS cache covers fillers, guardrail/handoff lines and the opener vocabulary (`haan`, `acha`, `bilkul`, `theek hai`, …), not just backchannels | `human_bot/server/app.py` (`warm_tts`) | background warm-up; those clips play at 0 ms instead of ~1 s |
+| One socket per transport: `health()` and `openSession()` racing share the in-flight connect, and `close()` rejects that connect at once | `src/transport.js` | WS repro: mic ready at **2 s** instead of **13 s** — the second `#connect()` used to drop the opening socket, so the mic's `health()` waited out the 12 s RPC timeout |
+
+Deliberately not done in this pass: a speculative turn on the early transcript, a persistent TTS
+WebSocket, and prompt-prefix trimming. Each needs a provider decision or a larger change; the three
+above needed neither.
+
+What could not be measured here today: the live avatar path (Simli session limit) and Edge TTS
+first-byte (`edge TimeoutError` from this network all afternoon, both before and after the change).
+The clause and endpoint changes were verified with unit tests and the real `/chat` SSE stream, whose
+sentence timing is correct; the TTS delta is the same ~1 s per fresh clip measured in the audit.
+
 ### Hardening checks (added after the trace)
 
 ```powershell
@@ -271,7 +295,8 @@ released the room. No page errors.
 node --test --test-timeout=15000 avatar_widget\test\unit\parse-sse.test.mjs `
   avatar_widget\test\unit\session.test.mjs avatar_widget\test\unit\transport-ws.test.mjs `
   avatar_widget\test\unit\transport-sse.test.mjs avatar_widget\test\unit\speaker.test.mjs `
-  avatar_widget\test\unit\mic-gate.test.mjs avatar_widget\test\unit\avatar-motion.test.mjs
+  avatar_widget\test\unit\mic-gate.test.mjs avatar_widget\test\unit\mic-lifecycle.test.mjs `
+  avatar_widget\test\unit\avatar-motion.test.mjs
 
 # puppet motion, no bot needed (serve.py on :4300 is enough)
 node avatar_widget\test\motion.mjs
@@ -284,17 +309,33 @@ $env:SMOKE_URL="http://127.0.0.1:4300/demo.html?api=http://127.0.0.1:4001&ws=ws:
 node avatar_widget\test\smoke.mjs
 ```
 
-- **55 unit tests, all passing (2026-11-02).** They cover: an SSE event whose terminating blank line
+- **69 unit tests, all passing (2026-11-04).** They cover: an SSE event whose terminating blank line
   never arrives, events split across reads, CRLF/comment/multi-line data, non-JSON payloads, abort
   mid-stream, the 20 s inactivity deadline and the shared `/health`; the full session state machine
   including barge-in generation drops, illegal input before/after a call, idempotent `end()`,
   error openings and the spoken recovery line after a failed turn; the WS transport's connect/RPC/
   turn timeouts, close-during-connect, close-during-turn, superseded turns, malformed frames and
-  `close()`; the Speaker's session-owned generations (`cut(g)` adopts, never advances; lower is
-  dropped; `cut(0)` lets the next call's greeting play) and the female-only voice choice; the mic
-  gate (noise floor, sustained-loudness hold, discard of clicks, the 2.5× speaking gate, the 15 s
-  runaway cut); and the gesture tracks — every persona gesture is represented, each returns to
-  rest, the wobble alternates sides, and no track rolls past the cover limit.
+  `close()`, plus one socket shared by racing `health()`/`openSession()` callers and a `close()`
+  that rejects an in-flight connect instead of waiting for the timeout; the Speaker's session-owned
+  generations (`cut(g)` adopts, never advances; lower is dropped; `cut(0)` lets the next call's
+  greeting play) and the female-only voice choice; the mic gate (noise floor, sustained-loudness
+  hold, discard of clicks, the 2.5× speaking gate, the 15 s runaway cut, the 450 ms clean-tail end
+  vs the 700 ms ceiling on a fading tail, and `looksComplete`/`requestEnd`); and the gesture tracks
+  — every persona gesture is represented, each returns to rest, the wobble alternates sides, and no
+  track rolls past the cover limit.
+- **Mic path and re-enable, verified in a real browser (2026-11-04).** The deployed widget was
+  posting no audio to `/stt` at all: `/health` hid `stt` from every client that was not on loopback,
+  and the card read a missing field as "no server STT" (`Mic.start`, `src/audio.js`). Every production
+  call therefore used the browser recogniser — which iOS does not ship and Android drops after one
+  utterance — so the mic looked on but went deaf after the first turn. Two fixes: `human_bot` now
+  publishes `stt`/`tts` (provider strings, no keys) in the public `/health` body, and the card treats a
+  missing field as *unknown*, i.e. server-first, with `/stt`'s `503` still swapping to the browser live
+  (`prefersBrowserStt`). The browser fallback no longer restarts from `onend` synchronously (Chrome
+  throws `InvalidStateError`, which used to leave `active` true over a dead recogniser), retries a
+  tick later, and stops itself on fatal errors. The mic button follows `stopped`, ignores taps while
+  `getUserMedia` is opening, and shows a busy state. Regression-mocked in Chromium with a fake mic:
+  `/health` without `stt` → `/stt` calls; mic off → on mid-call; `end()` → `start()` → new session with
+  `/stt` again. Six new tests in `test/unit/mic-lifecycle.test.mjs` (69 total).
 - **Motion verified in a real browser** (`test/motion.mjs`, 15 checks): over ~158 frames the roll
   moved ~4°, the nod 3.0% of frame height, the sway 0.33% and breathing 0.004 of zoom; an exact
   inverse-transform corner test never let the frame edge show (minimum ~3 px of margin); a fake

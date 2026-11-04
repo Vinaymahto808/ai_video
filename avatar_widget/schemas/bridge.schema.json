@@ -7,7 +7,8 @@
     "aw:close": { "when": "panel hidden by host (Esc, launcher toggle, AvatarWidget.close())" }
   },
   "panel_to_host": {
-    "aw:ready":  { "mode": "live|puppet", "persona": "string" },
+    "aw:ready":  { "mode": "live|puppet", "persona": "string", "when": "call open + greeting playing; mode may still be puppet because the live renderer mounts in parallel" },
+    "aw:mode":   { "mode": "live|puppet", "when": "renderer changed after aw:ready (live finished mounting, or it fell back); additive, hosts may ignore" },
     "aw:state":  { "state": "idle|connecting|greeting|listening|thinking|speaking|ended|error" },
     "aw:close":  { "when": "user pressed the end-call icon" },
     "aw:lead":   { "session_id": "string", "turns": "integer", "when": "call ended; host may forward to CRM — transcript itself is not sent (not persisted)" },

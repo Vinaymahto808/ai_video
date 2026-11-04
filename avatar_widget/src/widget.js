@@ -17,6 +17,7 @@ export function createWidget(cfg) {
   const bridge = makeBridge(cfg.hostOrigin);
   let session = null;
   let starting = false;
+  let micStarting = null; // in-flight Mic.start(): the button must not treat it as "on" or "off" yet
   let ctx = cfg.context || {};
   let micWanted = false; // the customer's choice (mic button); a hidden tab pauses it, not changes it
   let wakeLock = null;
@@ -99,16 +100,29 @@ export function createWidget(cfg) {
 
     const mine = session; // end() may null `session` while we await below (host closed mid-connect)
     try {
-      const mode = await avatar.mount(ui.video, ui.img);
-      if (session !== mine) return;
+      // Mount *in parallel* with the call. The greeting is audio-first: waiting for the live avatar's
+      // first frame (Simli: 1-3 s measured) before even opening the session put all of that in front of
+      // the customer's first words. The puppet portrait is painted from the first frame; when the live
+      // renderer takes over, the host is told with `aw:mode` (a late, additive event).
+      const mounted = avatar.mount(ui.video, ui.img).then(
+        (mode) => mode,
+        (e) => { bridge.send({ type: "aw:error", message: "avatar: " + String(e?.message || e) }); return null; },
+      );
       const res = await mine.start();
-      if (!res || session !== mine) return;
+      if (!res || session !== mine) { await mounted; return; }
       ui.name.textContent = res.persona?.name || res.persona?.display_name || cfg.name || "Neha";
       ui.sub.textContent = res.persona?.company || cfg.company || "";
-      bridge.send({ type: "aw:ready", mode, persona: res.persona?.id });
+      bridge.send({ type: "aw:ready", mode: avatar.mode, persona: res.persona?.id });
+      mounted.then((mode) => {
+        if (mode && mode !== "puppet" && session === mine) bridge.send({ type: "aw:mode", mode });
+      });
       holdWake();
-      try { await mic.start(); if (session === mine) { micWanted = true; ui.micBtn.dataset.on = "1"; } else mic.stop(); }
-      catch (e) { bridge.send({ type: "aw:error", message: "mic permission: " + e.message }); }
+      try {
+        await mic.start();
+        if (session !== mine) mic.stop();
+        else if (mic.active) { micWanted = true; ui.micBtn.dataset.on = "1"; }
+        else { micWanted = false; ui.micBtn.dataset.on = "0"; } // no recorder / recogniser: do not show a live mic
+      } catch (e) { ui.micBtn.dataset.on = "0"; bridge.send({ type: "aw:error", message: "mic permission: " + e.message }); }
     } catch (e) {
       if (session !== mine) return; // already torn down by end(); its error is not ours to report
       bridge.send({ type: "aw:error", message: String(e?.message || e) });
@@ -121,6 +135,7 @@ export function createWidget(cfg) {
   async function end(notifyHost = true) {
     micWanted = false; starting = false;
     mic.stop(); mic.setSpeaking(false); speaker.cut(0); avatar.destroy(); releaseWake();
+    ui.micBtn.dataset.on = "0";
     if (session && session.state !== State.ENDED) {
       const s = session;
       const id = await s.end();
@@ -150,10 +165,27 @@ export function createWidget(cfg) {
   });
   mic.on("level", (l) => ui.level.style.setProperty("--level", Math.min(1, l * 12).toFixed(2)));
   mic.on("error", (e) => bridge.send({ type: "aw:error", message: "mic: " + e.message }));
+  // The mic can stop on its own (a fatal recogniser error, e.g. iOS has none): the button must follow
+  // the hardware, not stay blue over a dead microphone. `micWanted` is the customer's choice and is
+  // deliberately left alone, so a hidden tab still takes the mic back when it returns.
+  mic.on("stopped", () => { ui.micBtn.dataset.on = "0"; });
 
   ui.micBtn.addEventListener("click", async () => {
-    if (mic.active) { micWanted = false; mic.stop(); ui.micBtn.dataset.on = "0"; }
-    else { await mic.start(); micWanted = true; ui.micBtn.dataset.on = "1"; }
+    if (micStarting) return; // a tap while getUserMedia is opening must not cancel its own start
+    if (mic.active) { micWanted = false; mic.stop(); ui.micBtn.dataset.on = "0"; return; }
+    micWanted = true;
+    ui.micBtn.dataset.busy = "1";
+    micStarting = mic.start();
+    try {
+      await micStarting;
+      if (!mic.active) throw new Error("microphone unavailable");
+      ui.micBtn.dataset.on = "1";
+    } catch (e) {
+      // getUserMedia can take a second on a cold device; without this the button used to stay on
+      // (and a second tap cancelled the start, which looked like "the mic will not turn on again").
+      micWanted = false; ui.micBtn.dataset.on = "0";
+      bridge.send({ type: "aw:error", message: "mic: " + (e?.message || e) });
+    } finally { micStarting = null; ui.micBtn.dataset.busy = "0"; }
   });
   ui.endBtn.addEventListener("click", () => end(true));
   window.addEventListener("pagehide", () => end(false));
@@ -169,7 +201,10 @@ export function createWidget(cfg) {
     if (!live) return;
     holdWake();
     if (micWanted && !mic.active) {
-      try { await mic.start(); ui.micBtn.dataset.on = "1"; } catch (e) { bridge.send({ type: "aw:error", message: "mic: " + e.message }); }
+      try {
+        await mic.start();
+        ui.micBtn.dataset.on = mic.active ? "1" : "0";
+      } catch (e) { ui.micBtn.dataset.on = "0"; bridge.send({ type: "aw:error", message: "mic: " + e.message }); }
     }
   });
 

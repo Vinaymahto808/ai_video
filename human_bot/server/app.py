@@ -71,6 +71,7 @@ from persona.humanizer import (  # noqa: E402
     humanize,
     pick_backchannel,
     pick_gesture,
+    split_first_phrase,
     split_sentences,
     wants_detail,
 )
@@ -380,11 +381,20 @@ def cached_clip(text: str, emotion: str = "neutral") -> bytes | None:
 
 
 def warm_tts(personas: dict) -> None:
-    """At start-up: backchannels and stock lines for every persona, so the first turn never pays the
-    Edge cold start (7.6 s measured) and 'haan ji' / 'acha' play the instant the customer stops talking."""
+    """At start-up: backchannels, fillers, guardrail/handoff lines and the opening interjections for every
+    persona, so the first turn never pays the Edge cold start (7.6 s measured) and 'haan ji' / 'acha' play
+    the instant the customer stops talking."""
     phrases: list[str] = []
     for p in personas.values():
-        phrases += list((p.get("conversation") or {}).get("backchannels") or [])
+        conv = p.get("conversation") or {}
+        phrases += list(conv.get("backchannels") or [])
+        phrases += list(conv.get("fillers") or [])
+        g = p.get("guardrails") or {}
+        phrases += [g.get("handoff_line"), g.get("out_of_scope_line"), g.get("handoff_unavailable_line")]
+    # The opening-interjection vocabulary from _OPENER: cached_opener looks up the bare form and its
+    # capitalised twin, so both are warmed. The multi-word ones in the personas are already above.
+    for w in ("haan", "ji haan", "acha", "achha", "accha", "bilkul", "theek hai", "dekhiye", "arre", "okay"):
+        phrases += [w, w.capitalize()]
     phrases += ["Ek second, main check karti hoon.", "Haan ji, boliye.", "Samajh gayi."]
     seen: list[str] = []
     for t in phrases:
@@ -805,11 +815,17 @@ class Handler(BaseHTTPRequestHandler):
                 degraded.append("no live LLM provider (offline script)")
             if TTS_LAST.get("error"):
                 degraded.append("tts error")
-            body = {"ok": not degraded, "degraded": degraded, "persona_id": p.get("id"), "brand": p.get("company")}
+            body = {"ok": not degraded, "degraded": degraded, "persona_id": p.get("id"), "brand": p.get("company"),
+                    # The card picks its microphone path from these two: with server STT it records and
+                    # posts to /stt; without it, it needs the browser recogniser, which iOS does not have
+                    # and Android drops after one utterance. They were loopback-only, so every public
+                    # deployment silently fell back to the browser and the mic died after the first turn.
+                    # Provider names only; no keys and no operational counters.
+                    "stt": stt_status(), "tts": tts_status()}
             if self.client_ip() in LOOPBACK:  # operational detail stays on the box
                 body.update({
                     "provider": provider, "persona": p["display_name"], "sessions": len(SESSIONS),
-                    "tts": tts_status(), "tts_error": TTS_LAST.get("error"), "stt": stt_status(),
+                    "tts_error": TTS_LAST.get("error"),
                     "kb": kb_status(), "avatar": avatar_status(),
                     "crm": OUTBOX.status() if OUTBOX else {"sink": None, "note": "recording off"},
                     "leads": {"mode": acr_leads.mode(), "url": acr_leads.LEADS_URL, "dry_runs": len(acr_leads.LOG)},
@@ -1355,6 +1371,7 @@ class Handler(BaseHTTPRequestHandler):
             prefetch_tts([bc])  # normally already warm; this covers a persona added after start-up
 
         buf, spoken, idx = "", [], 0
+        clause_done = False  # the one early clause flush has happened (or a sentence made it unnecessary)
         # "explain in detail" lifts the per-sentence cap for this one turn; the prompt tells the model the same
         max_words = (persona["conversation"].get("max_words_detail", 70) if wants_detail(user_text)
                      else persona["conversation"]["max_words_turn"])
@@ -1398,11 +1415,31 @@ class Handler(BaseHTTPRequestHandler):
                                                "gesture": pick_gesture(persona["avatar"]["gestures"], emo, idx)})
                         prefetch_tts([piece], emotion=emo)
                         idx += 1
+                # First clause first: 3-10 words are enough for the first clip, so audio starts while the
+                # model is still writing the rest of that sentence. Once only; later flushes are sentences.
+                if not clause_done:
+                    cut = split_first_phrase(buf)
+                    if cut:
+                        head, buf = cut
+                        piece = humanize(head, max_words=max_words, language=s.language, female=female)
+                        if piece:
+                            spoken.append(piece)
+                            emo = emotion_of(piece)
+                            self._sse("sentence", {
+                                "index": idx,
+                                "text": piece,
+                                "emotion": emo,
+                                "gesture": pick_gesture(persona["avatar"]["gestures"], emo, idx),
+                            })
+                            prefetch_tts([piece], emotion=emo)
+                            idx += 1
+                        clause_done = True
                 # flush at a sentence boundary so TTS can start before the reply ends
                 while True:
                     m = split_sentences(buf)
                     if len(m) <= 1:
                         break
+                    clause_done = True  # a full sentence is already granular
                     head, buf = m[0], " ".join(m[1:])
                     piece = humanize(head, max_words=max_words, language=s.language, female=female)
                     if not piece:

@@ -197,6 +197,8 @@ export class WebSocketTransport {
     this.timeoutMs = timeoutMs;
     this.turnTimeoutMs = turnTimeoutMs;
     this.ws = null;
+    this.connecting = null;  // in-flight connect promise, shared by racing callers
+    this.connectAbort = null; // rejects that promise early (close() while the socket is still opening)
     this.pending = new Map(); // id -> {resolve, reject, timer}
     this.seq = 0;
     this.turn = null; // {onEvent, done, timer}
@@ -205,9 +207,13 @@ export class WebSocketTransport {
 
   #connect() {
     if (this.ws && this.ws.readyState === 1) return Promise.resolve();
+    // One socket per transport, even when health() and openSession() race (the widget starts the
+    // avatar mount and the call in parallel). Without this guard the second caller dropped the
+    // first socket mid-handshake and its caller hung until the 12 s timeout.
+    if (this.connecting) return this.connecting;
     if (!this.WebSocketImpl) return Promise.reject(new Error("WebSocket unavailable"));
     this.#dropSocket();
-    return new Promise((resolve, reject) => {
+    const connecting = new Promise((resolve, reject) => {
       let ws;
       try { ws = new this.WebSocketImpl(this.url); } catch (e) { reject(e); return; }
       this.ws = ws;
@@ -215,6 +221,7 @@ export class WebSocketTransport {
       const timer = setTimeout(() => {
         if (settled) return;
         settled = true;
+        if (this.ws === ws) this.ws = null;
         try { ws.close(); } catch { /* ignore */ }
         reject(new Error("ws connect timeout"));
       }, this.timeoutMs);
@@ -234,7 +241,16 @@ export class WebSocketTransport {
       };
       ws.onerror = (e) => fail(e?.error ?? new Error("ws error"));
       ws.onclose = (e) => fail(new Error("ws closed before open (" + (e?.code ?? "?") + ")"));
+      // close() detaches the socket handlers before closing it, so onclose would never fire; keep a
+      // way to reject the promise instead of letting the caller wait out the full connect timeout.
+      this.connectAbort = () => fail(new Error("ws closed"));
     });
+    this.connecting = connecting;
+    const clear = () => {
+      if (this.connecting === connecting) { this.connecting = null; this.connectAbort = null; }
+    };
+    connecting.then(clear, clear);
+    return connecting;
   }
 
   #attach(ws) {
@@ -363,6 +379,10 @@ export class WebSocketTransport {
   close() {
     this.#abortTurn("closed");
     this.#failAll(new Error("ws closed"));
+    this.connecting = null; // an in-flight connect must not gate the next call's socket
     this.#dropSocket();
+    const abort = this.connectAbort;
+    this.connectAbort = null;
+    abort?.(); // reject that in-flight connect now, not after the connect timeout
   }
 }

@@ -174,9 +174,19 @@ Any VPS with Caddy (section 4) works the same way; Render is just the no-ops opt
 
 | | URL | Render service |
 |---|---|---|
-| bot (site mirror + launcher at `/`, `/embed`, `/tts`, `/chat`) | https://neha-bot-mkjv.onrender.com | `srv-dbksp3tbedkc73efku70` |
+| bot (site mirror + launcher at `/`, `/embed`, `/stt`, `/tts`, `/chat`) | https://neha-bot-mkjv.onrender.com | `srv-dbksp3tbedkc73efku70` |
 | knowledge | https://neha-kb.onrender.com | `srv-dbksp36gekts73f2naog` |
 | widget files + landing | https://avatarwidget-five.vercel.app | Vercel |
+| widget panel (**primary**, talks to the Render bot) | https://avatarwidget-five.vercel.app/avatar_widget/panel.html?api=https://neha-bot-mkjv.onrender.com | Vercel |
+
+**The Render bot is the widget's production target** (2026-11-04). `index.html`, `avatar_widget/panel.html`
+and `avatar_widget/demo.html` all default to `https://neha-bot-mkjv.onrender.com` off-localhost, so a plain
+`data-api`-less embed works too. Railway (below) stays live as the secondary stack.
+
+```html
+<script src="https://avatarwidget-five.vercel.app/avatar_widget/loader.js"
+        data-api="https://neha-bot-mkjv.onrender.com" defer></script>
+```
 
 Both run on plan **free**, so: the first call after 15 idle minutes waits ~40 s (cold start), there is no
 persistent disk (conversation records and audio in `human_bot/data` are lost on every redeploy), and the kb
@@ -185,3 +195,43 @@ model. The crawl is seeded at boot from the committed `kb/seed/kb.sqlite` by `kb
 site content only; refresh it with `node src/seed.js`-style copy after a recrawl). Going to customers:
 plan `starter` for the bot, `standard` for kb, uncomment the two `disk` blocks in `render.yaml`, set
 `KB_QUERY_PROVIDER=local` and drop the empty `KB_LOCAL_MODEL`. Every push to `main` redeploys both.
+
+## Railway (bot + kb, one repo, two Dockerfiles)
+
+Same two servers, built from `deploy/railway/bot.Dockerfile` and `deploy/railway/kb.Dockerfile`; the widget
+stays on Vercel. Railway needs no Docker locally: it builds the images from the uploaded project, and
+`RAILWAY_DOCKERFILE_PATH` selects which file each service uses. The full runbook (variable matrix, deploy
+order, volume, verification) is in [`deploy/railway/README.md`](deploy/railway/README.md).
+
+Short version:
+
+```powershell
+railway login
+railway init -n neha-voice
+railway add -s bot -v RAILWAY_DOCKERFILE_PATH=deploy/railway/bot.Dockerfile -v PORT=8080
+railway add -s kb  -v RAILWAY_DOCKERFILE_PATH=deploy/railway/kb.Dockerfile  -v PORT=4100
+# keys + KB_URL=http://kb.railway.internal:4100, then:
+railway up -s kb
+railway up -s bot
+railway domain -s bot --port 8080
+```
+
+Differences from the Render path: services talk over `kb.railway.internal:4100` instead of a public URL, the
+kb image carries the Q&A bundle from the local archive (`railway up` only — a GitHub-linked build would skip
+it because the file is gitignored), and Free/Trial allows one volume per project, so attach it to `kb`
+(`railway service link kb` then `railway volume add -m /app/data`) and treat the bot's recordings as ephemeral.
+
+### Live since 2026-11-04 (Railway, Free plan, region southeast-asia)
+
+| | URL / value |
+|---|---|
+| bot | https://bot-production-a55d.up.railway.app |
+| kb (private) | `http://kb.railway.internal:4100` |
+| widget + panel (secondary — the default embed uses Render) | https://avatarwidget-five.vercel.app/avatar_widget/panel.html?api=https://bot-production-a55d.up.railway.app |
+| project | `motivated-light` (renamed `neha-voice` in the dashboard if preferred) |
+| volume | `kb-volume-yEaR` → `/app/data` (500 MB) |
+
+`HUMAN_BOT_AVATAR_PROVIDER=puppet`, `HUMAN_BOT_VOICE_STYLE=hindi`, `HUMAN_BOT_TTS_PROVIDER=edge`,
+`ACR_LEADS_MODE=dry`, mirror off. Railway rejects the Docker `VOLUME` instruction, so the kb Dockerfile has
+none and storage comes from `railway volume add`. The Free plan's $1/month credit will not cover two
+always-on services (~$4/month); expect them to stop when it runs out — Hobby is $5 including $5 of usage.

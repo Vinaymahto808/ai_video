@@ -1,0 +1,16 @@
+# Extra exclusions for `railway up` (applied on top of .gitignore, for both services).
+# Everything below is tracked in git but not needed by either container.
+training/
+research/
+avatar_widget/
+voice_clone/
+human_bot/train/
+human_bot/eval/
+tran_moment/README.md
+tran_moment/**/*.ps1
+tran_moment/**/*.py
+tran_moment/path_b/*.png
+tran_moment/path_b/README.md
+tran_moment/path_b/sample.wav
+tran_moment/path_b/sample_line.txt
+human_bot/web/shots/

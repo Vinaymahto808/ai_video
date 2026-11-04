@@ -150,6 +150,43 @@ def split_sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+# "…hota hai aur washing…": the joiner starts the next clause, so the head can end before it.
+_CLAUSE_JOINERS = ("aur", "to", "lekin", "magar", "kyunki", "isliye", "phir", "jab", "agar", "ya")
+
+
+def split_first_phrase(text: str, min_words: int = 3, max_words: int = 10) -> tuple[str, str] | None:
+    """First speakable clause of the first sentence, for TTS to start before the reply is finished.
+
+    Returns (head, rest) once the buffer holds a natural break: the last comma/semicolon that still
+    leaves >= min_words in the head, else the first conjunction inside the window. Returns None while
+    there is nothing safe to say yet (too short, no break, or the first sentence is already complete
+    and the normal sentence flush will handle it). Never cuts mid-phrase just to hit max_words: a
+    wrong pause is worse than a later first clip.
+    """
+    if not text or len(split_sentences(text)) > 1:
+        return None
+    # last punctuation break inside the window
+    cut = None
+    for m in re.finditer(r"[,;:]\s+", text):
+        head = text[: m.end()].strip()
+        if min_words <= len(head.split()) <= max_words:
+            cut = m.end()
+    if cut:
+        head, rest = text[:cut].strip(), text[cut:].strip()
+        return (head, rest) if rest else None
+    # no punctuation: a joiner may start the rest ("… hota hai aur washing …")
+    cut = None
+    for m in re.finditer(r"\b(" + "|".join(_CLAUSE_JOINERS) + r")\b", text, re.I):
+        head = text[: m.start()].strip()
+        if min_words <= len(head.split()) <= max_words:
+            cut = m.start()
+    if cut is not None:
+        head, rest = text[:cut].strip(), text[cut:].strip()
+        if head and rest:
+            return head, rest
+    return None
+
+
 def enforce_budget(text: str, max_words: int = 40) -> str:
     """Trim to the word budget without cutting mid-sentence and without losing the ask."""
     sents = split_sentences(text)

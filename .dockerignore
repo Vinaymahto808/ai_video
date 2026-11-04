@@ -1,0 +1,34 @@
+# Build-context trimming for the Railway images (deploy/railway/*.Dockerfile). The CLI already drops
+# .gitignore'd paths from the upload; this file also keeps tracked-but-unused material out of the build.
+.git
+.vercel
+.env
+.env.*
+**/.env
+**/__pycache__
+**/*.pyc
+**/node_modules
+
+# local data: recordings, customer Q&A CSVs, the working SQLite db
+human_bot/data
+kb/data
+kb/storage
+kb/seed/acr_customer_qa*.csv
+kb/seed/qa_rewrites.json
+kb/seed/QA_REVIEW.md
+
+# not used at runtime by either service
+training
+research
+tools
+voice_clone
+voice_models
+avatar_widget
+human_bot/train
+human_bot/eval
+human_bot/web/shots
+tran_moment/path_b/cache
+tran_moment/path_b/mouths_old_neha
+tran_moment/path_b/mouths_warp_v2
+tran_moment/prepared/clips
+*.log

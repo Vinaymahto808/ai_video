@@ -180,28 +180,67 @@ export class Speaker extends Emitter {
 }
 
 /**
+ * Words that cannot end a thought. A transcript that stops on one of these is a mid-sentence pause:
+ * shortening the silence window for it would clip the rest of the sentence, so the gate keeps the full
+ * `silenceMs`. Connectors only (not content words), so "kal aaya tha" and "haan" stay complete.
+ */
+const DANGLING = new Set((
+  "aur and or ya to bhi ki ke ka ko mein main me se par pe tak jo jab tab agar lekin magar " +
+  "kyunki matlab yaani because like the a an of in on at with for is are was were that this " +
+  "will can could would should so um uh hmm"
+).split(" "));
+
+/**
+ * Does this transcript look like a finished thought? Pure and deliberately conservative: an empty
+ * transcript or one ending on a connector ("aur…", "ki…", "of…") is not. Used only to allow an
+ * *earlier* end; a false "complete" costs a clipped word, so unknown scripts (Devanagari) are
+ * treated as complete only when they are non-empty without a trailing comma.
+ */
+export function looksComplete(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return false;
+  if (/[,;:\-–—]$/.test(raw)) return false;
+  const words = raw.toLowerCase().replace(/[^\p{L}\p{N}\s']/gu, " ").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return false;
+  return !DANGLING.has(words[words.length - 1]);
+}
+
+/**
  * Loudness gate for the mic loop (pure; unit-tested). Feed it one RMS level per tick and it answers:
  *   "arm"      first loud frame: start the recorder now (pre-roll) but do not report speech yet
  *   "start"    loud for holdMs (speakingHoldMs while the avatar talks): real speech, keep the recording
  *   "discard"  the burst died before the hold: it was noise, throw the recording away
- *   "end"      silence for silenceMs after speech
+ *   "end"      silence for silenceMs after speech (or fastSilenceMs when the tail is clean)
+ *   "early"    earlyMs of silence: snapshot the recording and transcribe it while the customer may continue
+ *   "resume"   speech came back after an "early" snapshot: that transcription is stale
  *   null       nothing changed
  * The floor follows the room between utterances (noise = noise*0.97 + level*0.03 per tick); while
  * speech is armed/active it only tracks downwards quickly and upwards very slowly, so a long
  * utterance does not raise it but a constant hum that tripped the gate eventually becomes "floor"
  * instead of an endless utterance. The gate is max(threshold, floor * noiseMul), and speakingMul×
  * that while the avatar is speaking so its own voice from a phone speaker does not interrupt it.
+ *
+ * Adaptive endpoint: `silenceMs` is the ceiling, not the answer. With `fastSilenceMs` set, the turn
+ * ends there once the room is quiet again (`lastAbove` older than `tailQuietMs`) or once the early
+ * transcript says the thought is finished. A fading tail ("…ji") keeps energy above `tailGate`, so it
+ * still gets the full `silenceMs`; a noisy room raises `tailGate` and does the same. Defaults are the
+ * old fixed behaviour (fastSilenceMs 0), so callers opt in.
  */
 export function createGate({
   threshold = 0.012, holdMs = 60, speakingHoldMs = 220, silenceMs = 700, dropMs = 120,
   noiseMul = 3, speakingMul = 2.5, floorAlpha = 0.03, talkingUpAlpha = 0.003, downAlpha = 0.1,
   maxTalkMs = 15000, earlyMs = 0,
+  fastSilenceMs = 0, tailQuietMs = 320, tailMul = 1.5, minSilenceMs = 300,
 } = {}) {
-  let noise = 0, talking = false, armed = false, armedAt = 0, lastLoud = 0, talkingSince = 0, earlySent = false;
+  let noise = 0, talking = false, armed = false, armedAt = 0, lastLoud = 0, lastAbove = 0;
+  let talkingSince = 0, earlySent = false, earlyComplete = false;
   const gate = (speaking) => {
     const g = Math.max(threshold, noise * noiseMul);
     return speaking ? g * speakingMul : g;
   };
+  // "any energy above the room floor", not "speech": detects a soft tail the speech gate would miss.
+  const tailGate = () => Math.max(threshold * 0.6, noise * tailMul);
+  const stop = () => { talking = false; earlySent = false; earlyComplete = false; };
   return {
     get noise() { return noise; },
     get talking() { return talking; },
@@ -213,40 +252,81 @@ export function createGate({
       if (!talking && !armed && !loud) noise = noise * (1 - floorAlpha) + level * floorAlpha;
       else if (level < noise) noise = noise * (1 - downAlpha) + level * downAlpha;
       else noise = noise * (1 - talkingUpAlpha) + level * talkingUpAlpha;
+      if (talking && (loud || level > tailGate())) lastAbove = now;
       if (talking) {
-        if (now - talkingSince > maxTalkMs) { talking = false; earlySent = false; return "end"; } // runaway: hand it to STT anyway
+        if (now - talkingSince > maxTalkMs) { stop(); return "end"; } // runaway: hand it to STT anyway
         if (loud) {
           lastLoud = now;
           // speech resumed after an "early" snapshot: that transcription covers only part of the utterance
-          if (earlySent) { earlySent = false; return "resume"; }
+          if (earlySent) { earlySent = false; earlyComplete = false; return "resume"; }
           return null;
         }
-        if (now - lastLoud > silenceMs) { talking = false; earlySent = false; return "end"; }
+        if (now - lastLoud > silenceMs) { stop(); return "end"; }
+        // Fast end: the ceiling only applies while there is still something to wait for. A transcript
+        // that stands on its own can shorten the window to minSilenceMs; otherwise the tail must be
+        // quiet for tailQuietMs. Both checks run on the current frame, so resumed speech always wins.
+        const floorMs = earlyComplete ? minSilenceMs : fastSilenceMs;
+        if (fastSilenceMs && now - lastLoud > floorMs
+            && (earlyComplete || now - lastAbove > tailQuietMs)) { stop(); return "end"; }
         // Early STT (earlyMs > 0): the pause is probably the end of the sentence; start transcribing now,
-        // so by the time silenceMs confirms it the text is (nearly) ready. Saves ~silenceMs - earlyMs.
+        // so by the time the end is confirmed the text is (nearly) ready. Saves ~silenceMs - earlyMs.
         if (earlyMs && !earlySent && now - lastLoud > earlyMs) { earlySent = true; return "early"; }
         return null;
       }
       if (loud) {
         lastLoud = now;
         if (!armed) { armed = true; armedAt = now; return "arm"; }
-        if (now - armedAt >= (speaking ? speakingHoldMs : holdMs)) { armed = false; talking = true; talkingSince = now; return "start"; }
+        if (now - armedAt >= (speaking ? speakingHoldMs : holdMs)) {
+          armed = false; talking = true; talkingSince = now; lastAbove = now; return "start";
+        }
         return null;
       }
       if (armed && now - lastLoud > dropMs) { armed = false; return "discard"; }
       return null;
     },
-    reset() { talking = false; armed = false; earlySent = false; },
+    /** The early snapshot's transcript. Returns true when it can stand alone (see looksComplete). */
+    earlyTranscript(text) { if (talking) earlyComplete = looksComplete(text); return earlyComplete; },
+    /**
+     * End the turn now if enough silence has passed and the caller has evidence the thought is over
+     * (a complete early transcript). Returns true when the turn was ended.
+     */
+    requestEnd(now = Date.now()) {
+      if (!talking || now - lastLoud < minSilenceMs || now - lastAbove < minSilenceMs) return false;
+      stop(); return true;
+    },
+    reset() { stop(); armed = false; },
   };
 }
 
+/**
+ * Which microphone path to take, decided from the server's `stt` field.
+ *
+ * The field is the authority when present: a provider string ("groq:whisper-large-v3-turbo") means the
+ * server can transcribe, while "browser only (no groq key)" means it cannot. An object {ready|ok} is
+ * accepted for older builds. A *missing* field means "not stated", not "unavailable" — public
+ * deployments used to hide it as operational detail, and reading that as unavailable pushed every call
+ * onto the browser recogniser, which iOS does not have and Android drops after one turn. Unknown is
+ * therefore server-first; /stt answers 503 when it really cannot, and that still switches paths live.
+ *
+ * Pure, so the decision is unit-tested without a browser.
+ */
+export function prefersBrowserStt(stt, hasRecorder = true) {
+  if (!hasRecorder) return true;
+  if (typeof stt === "string") return !stt.trim() || /^browser/i.test(stt);
+  if (stt && typeof stt === "object") return !(stt.ready ?? stt.ok ?? true);
+  return false;
+}
+
 export class Mic extends Emitter {
-  /** earlyMs: start transcribing after this much silence (0 disables); silenceMs still decides the turn end. */
-  constructor({ transport, lang = "hi-IN", silenceMs = 700, earlyMs = 350, minMs = 350, threshold = 0.012, tickMs = 40 }) {
+  /**
+   * earlyMs: snapshot + transcribe after this much silence (0 disables). fastSilenceMs: end the turn
+   * there when the tail is clean (0 keeps the fixed silenceMs); silenceMs is always the ceiling.
+   */
+  constructor({ transport, lang = "hi-IN", silenceMs = 700, earlyMs = 200, fastSilenceMs = 450, tailQuietMs = 320, minMs = 350, threshold = 0.012, tickMs = 40 }) {
     super();
-    Object.assign(this, { transport, lang, silenceMs, earlyMs, minMs, threshold, tickMs });
+    Object.assign(this, { transport, lang, silenceMs, earlyMs, fastSilenceMs, tailQuietMs, minMs, threshold, tickMs });
     this.stream = null; this.rec = null; this.active = false; this.useBrowser = false; this.sr = null; this.ctx = null;
-    this.timer = 0; this.speaking = false; this.gate = null; this.early = null;
+    this.timer = 0; this.srRetry = 0; this.speaking = false; this.gate = null; this.early = null;
   }
 
   /** Tell the gate the avatar is talking (its own voice reaches the mic through phone speakers). */
@@ -255,11 +335,8 @@ export class Mic extends Emitter {
   async start() {
     if (this.active) return;
     this.active = true;
-    const health = await this.transport.health().catch(() => ({}));
-    const stt = health?.stt;
-    // human_bot reports stt as a provider string ("groq:whisper-large-v3-turbo"); older builds as {ready|ok}.
-    const sttReady = typeof stt === "string" ? stt.length > 0 : !!(stt?.ready ?? stt?.ok ?? false);
-    this.useBrowser = !sttReady || typeof MediaRecorder === "undefined";
+    const health = await this.transport.health().catch(() => null);
+    this.useBrowser = prefersBrowserStt(health?.stt, typeof MediaRecorder !== "undefined");
     if (!this.active) return; // stopped while /health was in flight
     if (this.useBrowser) return this.#startBrowser();
     try {
@@ -278,6 +355,7 @@ export class Mic extends Emitter {
   stop() {
     this.active = false;
     clearInterval(this.timer); this.timer = 0;
+    clearTimeout(this.srRetry); this.srRetry = 0;
     try { if (this.rec && this.rec.state !== "inactive") { this.rec.keep = false; this.rec.stop(); } } catch { /* ignore */ }
     this.rec = null;
     this.stream?.getTracks().forEach((t) => t.stop()); this.stream = null;
@@ -286,6 +364,7 @@ export class Mic extends Emitter {
     try { this.ctx?.close(); } catch { /* ignore */ }
     this.ctx = null;
     this.gate?.reset();
+    this.early = null; // a snapshot from the old recording must not answer the next one
     this.emit("stopped");
   }
 
@@ -296,7 +375,10 @@ export class Mic extends Emitter {
     const an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an);
     const buf = new Float32Array(an.fftSize);
     const mime = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((m) => MediaRecorder.isTypeSupported(m)) || "";
-    const gate = (this.gate = createGate({ threshold: this.threshold, silenceMs: this.silenceMs, earlyMs: this.earlyMs }));
+    const gate = (this.gate = createGate({
+      threshold: this.threshold, silenceMs: this.silenceMs, earlyMs: this.earlyMs,
+      fastSilenceMs: this.fastSilenceMs, tailQuietMs: this.tailQuietMs,
+    }));
     let startedAt = 0;
     const rms = () => { an.getFloatTimeDomainData(buf); let s = 0; for (const v of buf) s += v * v; return Math.sqrt(s / buf.length); };
 
@@ -333,7 +415,14 @@ export class Mic extends Emitter {
       const rec = this.rec;
       if (!rec || !rec.keep || !rec.chunks?.length) return;
       const blob = new Blob(rec.chunks, { type: mime || "audio/webm" });
-      this.early = this.transport.stt(blob);
+      const p = this.transport.stt(blob);
+      p.then((text) => {
+        // A transcript that stands on its own ("haan", "theek hai") is evidence the customer is done:
+        // end now instead of waiting out the rest of silenceMs. A mid-clause one ("…ki") keeps it.
+        if (this.early !== p) return; // stale: speech resumed after the snapshot
+        if (gate.earlyTranscript(text) && gate.requestEnd()) { this.emit("speech-end"); stopRec(true); }
+      }).catch(() => { /* onstop re-transcribes the full clip */ });
+      this.early = p;
     };
     const stopRec = (keep) => {
       const rec = this.rec;
@@ -366,20 +455,45 @@ export class Mic extends Emitter {
   #startBrowser() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
+      // iOS Safari has no recogniser at all. Fail visibly so the button cannot claim the mic is on.
       this.active = false;
-      this.emit("error", new Error("no speech recognition available"));
+      this.emit("error", new Error("no speech recognition in this browser"));
+      this.emit("stopped");
       return;
     }
     const sr = (this.sr = new SR());
     sr.lang = this.lang; sr.continuous = true; sr.interimResults = true;
+    const arm = () => {
+      if (!this.active || this.sr !== sr) return;
+      clearTimeout(this.srRetry);
+      // Restarting straight from onend throws InvalidStateError ("recognition has already started")
+      // in Chrome, and the swallowed throw left the mic on but deaf. A tick later is always legal.
+      this.srRetry = setTimeout(() => {
+        if (!this.active || this.sr !== sr) return;
+        try { sr.start(); } catch (e) { this.#browserDead(e); }
+      }, 250);
+    };
     sr.onresult = (e) => {
       const r = e.results[e.results.length - 1];
       if (r.isFinal) this.emit("utterance", { text: r[0].transcript.trim() });
       else this.emit("speech-start");
     };
-    sr.onend = () => { if (this.active && this.sr === sr) { try { sr.start(); } catch { /* ignore */ } } };
-    sr.onerror = (e) => this.emit("error", new Error(e.error));
-    sr.start();
+    sr.onend = arm;
+    sr.onerror = (e) => {
+      this.emit("error", new Error(e.error));
+      // Permission or device gone: no restart will succeed, and a green button would be a lie.
+      if (/not-allowed|service-not-allowed|audio-capture/.test(e.error || "")) this.stop();
+    };
+    try { sr.start(); } catch (e) { return this.#browserDead(e); }
     this.emit("ready", { mode: "browser" });
+  }
+
+  #browserDead(e) {
+    this.active = false;
+    clearTimeout(this.srRetry); this.srRetry = 0;
+    try { this.sr?.abort?.(); } catch { /* ignore */ }
+    this.sr = null;
+    this.emit("error", e instanceof Error ? e : new Error(String(e?.message || e || "speech recognition failed")));
+    this.emit("stopped");
   }
 }

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 globalThis.window = globalThis;
 globalThis.Audio = class { pause() {} load() {} removeAttribute() {} play() { return Promise.resolve(); } };
-const { createGate } = await import("../../src/audio.js");
+const { createGate, looksComplete } = await import("../../src/audio.js");
 
 /** Feed `ms` worth of 40 ms frames at `level`, collecting non-null verdicts. One clock for the whole file. */
 let clock = 1000;
@@ -107,4 +107,49 @@ test("early STT is off by default (earlyMs 0): no 'early' signals", () => {
   feed(0.2, 200);
   const pause = feed(0.0, 600);
   assert.ok(!pause.includes("early"));
+});
+
+test("looksComplete: a transcript that stops on a connector is a mid-sentence pause", () => {
+  assert.equal(looksComplete("haan"), true);
+  assert.equal(looksComplete("Theek hai ji."), true);
+  assert.equal(looksComplete("haan ji,"), false, "trailing comma: more is coming");
+  assert.equal(looksComplete("package ka"), false);
+  assert.equal(looksComplete("main aapko bata deti hoon ki"), false);
+  assert.equal(looksComplete(""), false);
+});
+
+test("adaptive endpoint: a clean tail ends at fastSilenceMs, not silenceMs", () => {
+  const g = createGate({ threshold: 0.01, holdMs: 60, silenceMs: 700, fastSilenceMs: 450, floorAlpha: 0 });
+  let t = 0;
+  const feed = (level, ms) => { const out = []; for (let i = 0; i < ms / 20; i++) { t += 20; out.push(g.feed(level, t)); } return out; };
+  feed(0.2, 200); // last loud frame at t=200
+  const pause = feed(0.0, 520);
+  assert.equal(pause.filter((x) => x === "end").length, 1, "exactly one end: " + pause);
+  assert.equal(pause.indexOf("end"), 22, "ended ~460 ms after the last loud frame, not 700");
+  assert.equal(g.talking, false);
+});
+
+test("adaptive endpoint: a fading tail keeps waiting, so '…ji' is not clipped", () => {
+  const g = createGate({ threshold: 0.01, holdMs: 60, silenceMs: 700, fastSilenceMs: 450, tailQuietMs: 320, floorAlpha: 0 });
+  let t = 0;
+  const feed = (level, ms) => { const out = []; for (let i = 0; i < ms / 20; i++) { t += 20; out.push(g.feed(level, t)); } return out; };
+  feed(0.2, 200);
+  const fade = feed(0.012, 300); // above tailGate (~0.009) but below the speech gate (~0.018)
+  assert.ok(!fade.includes("end"), "the fade itself is not the end: " + fade);
+  const after = feed(0.0, 800);
+  assert.equal(after.filter((x) => x === "end").length, 1);
+  assert.ok(520 + after.indexOf("end") * 20 > 700, "waited past the clean-tail point because of the tail");
+});
+
+test("a complete early transcript allows requestEnd at minSilenceMs; an incomplete one does not", () => {
+  const g = createGate({ threshold: 0.01, holdMs: 60, silenceMs: 700, fastSilenceMs: 0, floorAlpha: 0 });
+  let t = 0;
+  const feed = (level, ms) => { const out = []; for (let i = 0; i < ms / 20; i++) { t += 20; out.push(g.feed(level, t)); } return out; };
+  feed(0.2, 200);
+  feed(0.012, 260); // soft tail keeps lastAbove fresh (last update at t=460)
+  assert.equal(g.earlyTranscript("main aapko bata deti hoon ki"), false);
+  assert.equal(g.requestEnd(700), false, "only 240 ms since the tail");
+  assert.equal(g.earlyTranscript("haan ji"), true);
+  assert.equal(g.requestEnd(780), true, "300 ms of silence and a thought that stands alone");
+  assert.equal(g.talking, false);
 });

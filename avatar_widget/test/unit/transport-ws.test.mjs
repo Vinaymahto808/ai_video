@@ -163,6 +163,46 @@ test("close() ends the turn and reports a closed transport", async () => {
   assert.deepEqual(await t.health(), { ok: false, transport: "ws" });
 });
 
+test("health() and openSession() racing share one socket", async () => {
+  // The widget mounts the avatar and opens the call in parallel; both call health()/openSession()
+  // before the first socket is up. A second #connect() used to drop the first socket mid-handshake,
+  // so one caller hung until the 12 s RPC timeout and the mic only started after the greeting.
+  const t = make();
+  const h = t.health();
+  const s = t.openSession({ persona: "p" });
+  assert.equal(FakeSocket.instances.length, 1, "one socket for both callers");
+
+  const ws = FakeSocket.instances[0];
+  ws.open();
+  await flush();
+  assert.equal(ws.sent.length, 2, "both RPCs went out on the same socket");
+  const healthId = ws.sent.find((f) => f.type === "health").id;
+  const sessionId = ws.sent.find((f) => f.type === "session").id;
+  assert.notEqual(healthId, sessionId);
+
+  ws.message({ reply_to: healthId, data: { ok: true, stt: "groq" } });
+  ws.message({ reply_to: sessionId, data: { session_id: "s1" } });
+  assert.deepEqual(await h, { ok: true, stt: "groq" });
+  assert.deepEqual(await s, { session_id: "s1" });
+  assert.equal(FakeSocket.instances.length, 1, "no second socket was opened");
+});
+
+test("close() during a connect does not block the next call's socket", async () => {
+  const t = make();
+  const first = t.openSession({});
+  t.close();
+  const ws1 = FakeSocket.instances.at(-1);
+  await assert.rejects(first, /ws closed/);
+
+  const second = t.openSession({});
+  const ws2 = FakeSocket.instances.at(-1);
+  assert.notEqual(ws2, ws1, "a fresh socket for the new call");
+  ws2.open();
+  await flush();
+  ws2.message({ reply_to: ws2.sent[0].id, data: { session_id: "s2" } });
+  assert.deepEqual(await second, { session_id: "s2" });
+});
+
 test("ttsUrl falls back to the HTTP origin of the ws URL", () => {
   const t = make();
   assert.equal(t.ttsUrl("a b", "v"), "http://test/socket/tts?text=a+b&voice=v");
