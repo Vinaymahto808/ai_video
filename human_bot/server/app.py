@@ -849,7 +849,11 @@ class Handler(BaseHTTPRequestHandler):
                     # and Android drops after one utterance. They were loopback-only, so every public
                     # deployment silently fell back to the browser and the mic died after the first turn.
                     # Provider names only; no keys and no operational counters.
-                    "stt": stt_status(), "tts": tts_status()}
+                    "stt": stt_status(), "tts": tts_status(),
+                    # Avatar provider/ready status is public so the widget knows whether to initialise
+                    # Simli live streaming or stay in puppet mode. No keys are exposed.
+                    "avatar": {"provider": avatar_status().get("provider"), "ready": avatar_status().get("ready", False),
+                               "face_id": avatar_status().get("face_id")}}
             if self.client_ip() in LOOPBACK:  # operational detail stays on the box
                 body.update({
                     "provider": provider, "persona": p["display_name"], "sessions": len(SESSIONS),
