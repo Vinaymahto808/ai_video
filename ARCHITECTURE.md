@@ -218,11 +218,13 @@ the server itself spends 30-80 ms per turn on the laptop.
 | 10 | 5 of 10 got 502, p50 12 s | 6 of 10 got 502, p50 8.8 s | 0.17 s, p95 0.55 s |
 | 20 | - | - | 0.5 s, p95 1.6 s |
 
-What the pass changed: bot -> kb over Render's private network instead of the public HTTPS proxy
-(`KB_URL=http://neha-kb:10000`); the card paints the face before the 2 MB of reaction frames arrive
+What the pass changed: the card paints the face before the 2 MB of reaction frames arrive
 (frames stream in, greeting smile and blink first); gzip + ETag/304 for the card's text assets;
 `/health` no longer 503s when the LLM keys are rate-limited (that restarted the instance mid-call);
 per-provider LLM timeout 4 s; the local embedding model stays off on the free kb (it needs ~550 MB).
+Tried and reverted: `KB_URL=http://neha-kb:10000` (Render's private network) resolves only on paid
+instances; on free the name does not resolve and every retrieval failed. With paid plans switch to it:
+it removes the ~300 ms proxy hop and TLS from every turn.
 
 The ceiling is the free instance: 0.1 vCPU, 512 MB, sleeps after 15 min, one instance. Six
 simultaneous conversations are fine; ten saturate the CPU and Render's proxy answers 502. 500-1000

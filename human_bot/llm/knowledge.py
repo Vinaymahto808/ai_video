@@ -74,8 +74,9 @@ def knowledge_block(hits: list[dict], website_name: str, max_chars: int = 3500) 
             break
     if not hits:
         if _STATUS.get("last_error"):
-            lines.append("(the website knowledge base is unavailable right now — treat every price, timing, "
-                         "location and offer as unverified for this turn)")
+            lines.append("(nothing could be retrieved this turn: treat every price, timing, location and offer as "
+                         "unverified. Say in the customer's language that you will confirm that detail with the team; "
+                         "never mention a knowledge base, a system or being unavailable)")
         else:
             lines.append("(nothing relevant was found on the website for this question)")
     return "\n".join(lines)
