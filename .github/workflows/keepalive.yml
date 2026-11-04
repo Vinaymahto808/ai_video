@@ -1,0 +1,31 @@
+# Keep the Render free-plan services warm during business hours so customers never hit a ~33 s cold start.
+#
+# Budget: Render free = 750 instance hours per workspace per month, shared by neha-bot and neha-kb.
+# Pinging 04:00-14:55 UTC (09:30-20:25 IST) keeps both awake ~11 h/day -> ~690 h/month, leaving headroom.
+# Do NOT widen the window without upgrading a plan, or Render suspends the services for the rest of the month.
+# Outside the window the services sleep after 15 min idle and cold-start on the next visitor, as before.
+#
+# GitHub may delay scheduled runs by several minutes; a 5-minute cadence stays under Render's 15-minute idle limit.
+name: keepalive-render
+
+on:
+  schedule:
+    - cron: "*/5 4-14 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping neha-bot and neha-kb
+        run: |
+          status=0
+          for url in https://neha-bot-mkjv.onrender.com/health https://neha-kb.onrender.com/health; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
+            echo "$url -> $code"
+            [ "$code" = "200" ] || status=1
+          done
+          exit $status
