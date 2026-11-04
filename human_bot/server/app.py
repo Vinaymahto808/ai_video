@@ -49,6 +49,8 @@ from llm.client import (  # noqa: E402
     transcribe,
     provider_name,
     stream_reply,
+    cached_reply,
+    cache_reply,
     synthesize,
     synthesize_stream,
     tts_status,
@@ -210,6 +212,32 @@ TTS_LOCK = threading.Lock()
 TTS_LAST: dict[str, str] = {}
 TTS_INFLIGHT: dict[str, "TtsJob"] = {}   # key -> synthesis in progress (chunks appear as Edge sends them)
 TTS_CACHE_MAX = 400
+
+# --------------------------------------------------------------------------- chat response cache
+# Exact-match cache for customer questions served by the LLM. The first time a
+# question is asked it hits the model; every repeat is answered from RAM with zero
+# network latency. Keyed by normalised user text (the session matters little for
+# short questions like "AC service kitna hai?" or "Namaste").
+_CHAT_CACHE: dict[str, tuple[float, str]] = {}
+_CHAT_CACHE_TTL = 3600.0
+
+
+def _chat_cache_get(text: str) -> str | None:
+    rec = _CHAT_CACHE.get(text.strip().lower())
+    if not rec:
+        return None
+    ts, reply = rec
+    if time.time() - ts > _CHAT_CACHE_TTL:
+        _CHAT_CACHE.pop(text.strip().lower(), None)
+        return None
+    return reply
+
+
+def _chat_cache_put(text: str, reply: str) -> None:
+    key = text.strip().lower()
+    if len(key) > 200:
+        return
+    _CHAT_CACHE[key] = (time.time(), reply)
 
 
 def tts_key(text: str, voice: str | None = None, emotion: str = "neutral") -> str:
@@ -1396,6 +1424,11 @@ class Handler(BaseHTTPRequestHandler):
                     source = iter([self._file_service_request(s, slots)])
                 elif sr_wants(s.transcript, slots):
                     kb_extra = (kb_extra + "\n\n" if kb_extra else "") + sr_prompt_block(slots, s.sr_pending)
+            # chat response cache: exact-match questions skip the LLM entirely
+            if source is None:
+                cached = _chat_cache_get(user_text) or cached_reply(user_text)
+                if cached:
+                    source = iter([cached])
             for token in (source if source is not None else stream_reply(s.messages(extra=kb_extra), fallback=s.brain)):
                 if s.generation != my_gen:  # barge-in: a newer turn superseded us
                     self._sse("interrupted", {"generation": my_gen})
@@ -1472,6 +1505,10 @@ class Handler(BaseHTTPRequestHandler):
                 full = humanize(s.brain.reply(user_text), max_words=max_words, language=s.language, female=female)
             if not full:
                 full = "Ek second, main check karti hoon." if female else "Ek second, main check karta hoon."
+            # cache the LLM reply so the same question is instant next turn
+            if source is None:
+                _chat_cache_put(user_text, full)
+                cache_reply(user_text, full)
             s.transcript.append({"role": "assistant", "text": full, "t": time.time()})
             chunks = [{"text": c, "emotion": emotion_of(c),
                        "gesture": pick_gesture(persona["avatar"]["gestures"], emotion_of(c), i)}

@@ -39,7 +39,10 @@ OPENAI_BASE = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("
 OPENAI_KEY = os.getenv("openai_api_key") or os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("HUMAN_BOT_MODEL", "gpt-4o-mini")
 GROQ_KEY = os.getenv("groq_api_key") or os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("HUMAN_BOT_GROQ_MODEL", "qwen/qwen3.8-27b")
+# qwen/qwen3-4b-instant streams the first token ~2x faster than 27b with
+# near-equal Hinglish quality for short service-advisor replies. Override with
+# HUMAN_BOT_GROQ_MODEL=qwen/qwen3.8-27b if you need the larger model.
+GROQ_MODEL = os.getenv("HUMAN_BOT_GROQ_MODEL", "qwen/qwen3-4b-instant")
 GEMINI_KEY = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("HUMAN_BOT_GEMINI_MODEL", "gemini-3.8-flash")
 
@@ -51,11 +54,10 @@ class LLMError(RuntimeError):
     pass
 
 
-# Circuit breaker. A provider that fails is skipped so a dead key never adds ~1.5 s
-# of retry latency to every turn. Config failures (401/403/404) are held for an hour;
-# a 429 is a per-minute quota on Groq/OpenAI, so it is retried after 60 s; anything
-# else after 5 minutes. (2026-11-02: a 429 on all three providers held for an hour
-# left every turn on the offline script.)
+# Circuit breaker. Voice turns cannot afford long dead windows: a failed provider is
+# skipped briefly so the next customer turn falls back fast, then the provider is
+# retried. Config failures (401/403/404) held 5 min; 429 quota 30 s; transient
+# network blips 5 s (first two failures) then 30 s only if it keeps failing.
 _DEAD: dict[str, tuple[float, str, float]] = {}
 _FAILS: dict[str, int] = {}  # consecutive failures per provider
 
@@ -68,13 +70,13 @@ def _is_dead(name: str) -> bool:
 def _mark_dead(name: str, why: str) -> None:
     n = _FAILS[name] = _FAILS.get(name, 0) + 1
     if "429" in why:
-        ttl = 60.0
+        ttl = 30.0
     elif any(c in why for c in ("401", "403", "404")):
-        ttl = 3600.0
+        ttl = 300.0
     else:
-        # one network blip must not put every customer on the offline script for 5 minutes:
-        # 30 s after a single failure, 5 min only once it keeps failing
-        ttl = 30.0 if n < 3 else 300.0
+        # transient blip: back off fast, but not so fast that a dead endpoint
+        # hammers every turn; 5 s after first two failures, 30 s after that.
+        ttl = 5.0 if n < 3 else 30.0
     if name not in _DEAD:
         print(f"[llm] '{name}' disabled for {int(ttl)} s: {why}", file=sys.stderr, flush=True)
     _DEAD[name] = (time.time(), why, ttl)
@@ -85,9 +87,40 @@ def _mark_alive(name: str) -> None:
     _DEAD.pop(name, None)
 
 
-# Socket timeout per LLM request. Groq answers in ~0.2 s; a stalled connection used to hold a customer's
-# turn for the full 60 s before the next provider was tried (seen in the 2026-11-02 load test).
-LLM_TIMEOUT_S = int(os.getenv("HUMAN_BOT_LLM_TIMEOUT_S", "8"))
+# Socket timeout per LLM request. Voice turns need a first token in under ~2 s:
+# Groq streams in ~0.2 s; anything slower than 3 s means the provider is stalled
+# and we fall back immediately instead of making the customer wait.
+LLM_TIMEOUT_S = int(os.getenv("HUMAN_BOT_LLM_TIMEOUT_S", "3"))
+
+# --------------------------------------------------------------------------- response cache
+# Exact-match cache for short, high-frequency customer questions. Avoids a network
+# round-trip entirely for greetings, price questions and status checks; the first
+# time a phrase is heard it hits the LLM, every time after it is served from RAM.
+_RESPONSE_CACHE: dict[str, tuple[float, str]] = {}
+_RESPONSE_CACHE_TTL = 3600.0  # 1 hour
+
+
+def _cache_get(text: str) -> str | None:
+    rec = _RESPONSE_CACHE.get(text.strip().lower())
+    if not rec:
+        return None
+    ts, reply = rec
+    if time.time() - ts > _RESPONSE_CACHE_TTL:
+        _RESPONSE_CACHE.pop(text.strip().lower(), None)
+        return None
+    return reply
+
+
+def _cache_put(text: str, reply: str) -> None:
+    key = text.strip().lower()
+    if len(key) > 200:  # only cache short questions
+        return
+    _RESPONSE_CACHE[key] = (time.time(), reply)
+
+
+def cache_reply(text: str, reply: str) -> None:
+    """Cache an LLM reply so the same customer question is answered from RAM next time."""
+    _cache_put(text, reply)
 
 
 def _post(url: str, payload: dict, key: str, timeout: int = LLM_TIMEOUT_S):
@@ -100,7 +133,7 @@ def _post(url: str, payload: dict, key: str, timeout: int = LLM_TIMEOUT_S):
 
 
 def stream_openai(messages: list[dict], base: str, key: str, model: str) -> Iterator[str]:
-    payload = {"model": model, "messages": messages, "stream": True, "temperature": 0.7, "max_tokens": 220}
+    payload = {"model": model, "messages": messages, "stream": True, "temperature": 0.5, "max_tokens": 160}
     with _post(f"{base}/chat/completions", payload, key) as r:
         for raw in r:
             line = raw.decode("utf-8", "ignore").strip()
@@ -127,7 +160,7 @@ def stream_gemini(messages: list[dict]) -> Iterator[str]:
     payload = {
         "system_instruction": {"parts": [{"text": system}]},
         "contents": contents,
-        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 220},
+        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 160},
     }
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:streamGenerateContent?alt=sse"
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),  # key in a header, never in the URL (logs)
@@ -169,13 +202,32 @@ def provider_name() -> str:
     return "offline"
 
 
+def cached_reply(text: str) -> str | None:
+    """Instant answer for a repeated short question; None when not cached."""
+    return _cache_get(text)
+
+
 def stream_reply(messages: list[dict], fallback: "OfflineBrain | None" = None) -> Iterator[str]:
     """Try each configured provider; a provider that fails is skipped for a while.
 
     The first *non-blank* chunk is pulled before committing, so a dead endpoint or a
     reasoning-only/empty completion never emits a half sentence into the TTS pipeline.
     An empty completion is retried once, then the next provider is tried.
+
+    Repeated short questions (greetings, price asks, status checks) are served from
+    the response cache with zero network latency.
     """
+    user_text = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            user_text = m.get("content", "")
+            break
+    if user_text:
+        hit = _cache_get(user_text)
+        if hit is not None:
+            yield hit
+            return
+
     available: dict[str, Callable[[], Iterator[str]]] = {}
     if OPENAI_KEY:
         available["openai-compatible"] = lambda: stream_openai(messages, OPENAI_BASE, OPENAI_KEY, OPENAI_MODEL)
