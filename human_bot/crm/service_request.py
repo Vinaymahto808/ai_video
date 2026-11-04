@@ -29,12 +29,52 @@ SERVICE_SLUG = {
 
 PHONE_RE = re.compile(r"(?<!\d)(?:\+?91[\s-]?)?([6-9]\d{9})(?!\d)")
 REG_RE = re.compile(r"\b([A-Z]{2}[\s-]?\d{1,2}[\s-]?[A-Z]{1,3}[\s-]?\d{3,4})\b", re.I)
-NAME_RE = re.compile(r"(?:mera naam|my name is|naam hai|name hai|main|i am|i'm|this is|bol raha hoon|bol rahi hoon)\s+([A-Za-z][a-z]{1,15}(?:\s+[A-Z][a-z]{1,15})?)", re.I)
+NAME_RE = re.compile(r"(?:mera naam|my name is|naam hai|name hai|main|i am|i'm|this is|bol raha hoon|bol rahi hoon)\s+([A-Za-z][a-z]{1,15}(?:\s+[A-Za-z][a-z]{1,15})?)", re.I)
 NAME_STOP = {"neha", "auto", "car", "gurgaon", "delhi", "noida", "bol", "baat", "kar", "ek", "the", "ok", "haan", "nahi", "service", "sir", "madam",
              "hai", "hoon", "hu", "ji", "se", "raha", "rahi", "bolta", "bolti", "and", "aur", "mera", "meri"}
+# A one/two-word reply that is only a name shape (letters, no verb/noise words) can be the name itself:
+# the question "Aapka naam kya hai?" asked just before makes "vinay" a name, not noise (2026-11-04).
+NAME_HINT = re.compile(r"\b(naam|name)\b", re.I)
+# Refusals and hedges are not names. Checked on the RAW user turn, not the filtered words: "nahi"
+# itself is a NAME_STOP fill, so "nahi batana" would otherwise leave only "batana" and slip through.
+NAME_DECLINE = re.compile(r"\b(nahi|nahin|nahi bataunga|nahi batana|nahi bataungi|mat\b|pata nahi|baad mein|skip)\b", re.I)
 YES_RE = re.compile(r"^\W*(haan|ha|han|haan ji|ji haan|yes|yeah|ok|okay|theek hai|thik hai|sahi hai|bilkul|kar do|bhej do|bhej dijiye|send|confirm|done|sure|go ahead)\b", re.I)
 NO_RE = re.compile(r"^\W*(nahi|na|no|mat|ruko|wait|cancel|galat|wrong|change)\b", re.I)
 WHEN_RE = re.compile(r"\b(aaj|today|abhi|kal|tomorrow|parso|weekend|saturday|sunday|monday|tuesday|wednesday|thursday|friday|subah|morning|dopahar|afternoon|shaam|evening)\b", re.I)
+
+
+def _bare_name(transcript: list[dict]) -> str:
+    """The name from a short turn that is only a name: "vinay", "vinay kumar", "vinay hai".
+
+    Used when NAME_RE found nothing: the bot asked "Aapka naam kya hai?" and the customer answered
+    with the name alone (STT also returns "VInay"/"VINAY" — the check is case-insensitive). Fills
+    ("hai", "ji", "sir"...) are dropped, at most two letters-only words of 3-16 chars count, and a
+    question mark anywhere disqualifies the turn ("kya charges hain?" is never a name)."""
+    turns = transcript or []
+    # find the assistant turn that asked for the name, then take the user turn that answered it
+    name_asked_at = None
+    for i, t in enumerate(turns):
+        if t.get("role") == "assistant" and NAME_HINT.search(t.get("text", "")):
+            name_asked_at = i
+    if name_asked_at is None:
+        return ""  # the name was never asked: a bare word stays noise
+    # the customer's answer is the first user turn after the name question
+    src = ""
+    for t in turns[name_asked_at + 1:]:
+        if t.get("role") == "user" and t.get("text", "").strip():
+            src = t["text"].strip()
+            break
+    if not src or "?" in src or NAME_DECLINE.search(src):
+        return ""
+    if len(re.findall(r"\b(zero|one|two|three|four|five|six|seven|eight|nine|ek|do|teen|char|paanch|panch|chhah|cheh|saat|aath|nau)\b", src, re.I)) >= 3:
+        return ""  # spoken digits = the phone number, never a name
+    words = [w.strip(".,!?;:()'\"") for w in src.split()]
+    words = [w for w in words if w and w.lower() not in NAME_STOP]
+    if not words or len(words) > 2:
+        return ""
+    if any(not w.isalpha() or not (3 <= len(w) <= 16) for w in words):
+        return ""
+    return " ".join(words).title()
 
 
 def collect(transcript: list[dict]) -> dict[str, str]:
@@ -47,6 +87,18 @@ def collect(transcript: list[dict]) -> dict[str, str]:
     m = PHONE_RE.search(user)
     if m:
         out["phone"] = m.group(1)
+    else:
+        # spoken digits: "nine eight one one two two..." -> 9811223344 (the way customers actually
+        # say a number on a call; STT writes it as words more often than as numerals)
+        word_digits = re.findall(
+            r"\b(zero|one|two|three|four|five|six|seven|eight|nine|ek|do|teen|char|paanch|panch|chhah|cheh|saat|aath|nau)\b", user, re.I)
+        table = {"zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                 "six": "6", "seven": "7", "eight": "8", "nine": "9", "ek": "1", "do": "2",
+                 "teen": "3", "char": "4", "paanch": "5", "panch": "5", "chhah": "6", "cheh": "6",
+                 "saat": "7", "aath": "8", "nau": "9"}
+        digits = "".join(table.get(w.lower(), "") for w in word_digits)
+        if len(digits) >= 10 and digits[-10] in "6789":
+            out["phone"] = digits[-10:]
     m = REG_RE.search(user)
     if m:
         out["registration"] = re.sub(r"[\s-]", "", m.group(1)).upper()
@@ -57,6 +109,14 @@ def collect(transcript: list[dict]) -> dict[str, str]:
         words = [w for w in m.group(1).split() if w.lower() not in NAME_STOP]  # "mera naam Rahul hai" -> Rahul
         if words:
             out["name"] = " ".join(words).title()
+        elif (m.group(1) or "").lower() in ("hai", "hoon"):
+            pass  # "mera naam hai": the name came before or comes next; nothing to store yet
+    if not out.get("name"):
+        # the bare-name answer: "Aapka naam kya hai?" -> "vinay". STT returns "VInay"/"VINAY" as
+        # often as "Vinay", so the check is case-insensitive; "vinay hai" keeps only the real word.
+        name = _bare_name(transcript)
+        if name:
+            out["name"] = name
     for name in OfflineServiceBrain._MODELS:
         if f" {name} " in low or f" {name}," in low:
             out["car"] = name.title(); break

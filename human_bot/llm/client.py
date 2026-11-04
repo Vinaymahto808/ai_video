@@ -361,6 +361,7 @@ class OfflineServiceBrain(OfflineBrain):
         self.context: list[dict] = []  # KB hits for the current turn, set by the server
         self.offered = False  # a pickup/call-back was offered last turn
         self.asked_reg = False  # the registration number is asked once, never insisted on
+        self.last_reply = ""  # what the brain just said: the question the customer is answering
 
     # -- slot filling ---------------------------------------------------------------
     def _remember(self, text: str) -> None:
@@ -386,10 +387,21 @@ class OfflineServiceBrain(OfflineBrain):
         if m:
             self.slots["when"] = m.group(1)
         # name and phone: the same patterns the server's service-request collector uses
-        from crm.service_request import NAME_RE, NAME_STOP, PHONE_RE, REG_RE  # noqa: PLC0415
+        from crm.service_request import NAME_RE, NAME_STOP, PHONE_RE, REG_RE, _bare_name  # noqa: PLC0415
         m = PHONE_RE.search(text)
         if m:
             self.slots["phone"] = m.group(1)
+        elif not self.slots.get("phone"):
+            # spoken digits: STT writes "nine eight one one ..." as words far more often than as
+            # numerals; join the word-digits and read the last 10 (the +91 prefix may be spoken too)
+            word_digits = re.findall(r"\b(zero|one|two|three|four|five|six|seven|eight|nine|dasa?|ek|do|teen|char|chara?|paanch|panch|chhah|cheh|saat|aath|nau)\b", text)
+            table = {"zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                     "six": "6", "seven": "7", "eight": "8", "nine": "9", "ek": "1", "do": "2",
+                     "teen": "3", "char": "4", "chara": "4", "paanch": "5", "panch": "5",
+                     "chhah": "6", "cheh": "6", "saat": "7", "aath": "8", "nau": "9", "das": "0"}
+            digits = "".join(table.get(w) for w in word_digits)
+            if len(digits) >= 10 and digits[-10] in "6789":
+                self.slots["phone"] = digits[-10:]
         m = REG_RE.search(text)
         if m:  # "DL 01 AB 1234": the registration number, asked together with the model
             self.slots["registration"] = re.sub(r"[\s-]", "", m.group(1)).upper()
@@ -398,6 +410,13 @@ class OfflineServiceBrain(OfflineBrain):
             words = [w for w in m.group(1).split() if w.lower() not in NAME_STOP]
             if words:
                 self.slots["name"] = " ".join(words).title()
+        if not self.slots.get("name") and getattr(self, "last_reply", ""):
+            # the bare-name answer: the bot just asked "Aapka naam kya hai?" and the customer said
+            # the name alone ("vinay" — STT also returns "VInay"/"VINAY"). _bare_name only fires when
+            # the assistant turn asked for the name (it checks the "naam" hint itself).
+            name = _bare_name([{"role": "assistant", "text": self.last_reply}, {"role": "user", "text": text}])
+            if name:
+                self.slots["name"] = name
 
     def _next_question(self) -> str:
         s = self.slots
@@ -493,7 +512,11 @@ class OfflineServiceBrain(OfflineBrain):
         self._remember(user)
         new = [k for k in self.slots if before.get(k) != self.slots.get(k)]  # facts this turn added
         t = " " + user.lower().strip() + " "
+        out = self._reply(user, t, new)
+        self.last_reply = out  # the next turn is an answer to THIS question (bare-name capture)
+        return out
 
+    def _reply(self, user: str, t: str, new: list[str]) -> str:
         if not t.strip() or re.search(r"\b(hi|hello|namaste|namaskar|hey)\b", t):
             return f"Namaste! Main {self.name}, {self.company} se. Aapki gaadi mein kya problem hai, ya kaunsi service chahiye?"
 
