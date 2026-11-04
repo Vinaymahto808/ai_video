@@ -227,9 +227,15 @@ it because the file is gitignored), and Free/Trial allows one volume per project
 |---|---|
 | bot | https://bot-production-a55d.up.railway.app |
 | kb (private) | `http://kb.railway.internal:4100` |
+| bot landing + site mirror (`/`, `/embed` — the same launcher page as Render) | https://bot-production-a55d.up.railway.app/ |
 | widget + panel (secondary — the default embed uses Render) | https://avatarwidget-five.vercel.app/avatar_widget/panel.html?api=https://bot-production-a55d.up.railway.app |
 | project | `motivated-light` (renamed `neha-voice` in the dashboard if preferred) |
 | volume | `kb-volume-yEaR` → `/app/data` (500 MB) |
+
+The bot image ships the site mirror + launcher (`/` proxying autocarrepair.in with "Talk to Neha" at the
+bottom right, `/embed` the bare card), so Railway serves the same page as `https://neha-bot-mkjv.onrender.com/`.
+It is gated by `HUMAN_BOT_SITE_MIRROR=1` (set on the Railway bot service); `/stt`, `/chat`, server STT all
+verified working there.
 
 `HUMAN_BOT_AVATAR_PROVIDER=puppet`, `HUMAN_BOT_VOICE_STYLE=hindi`, `HUMAN_BOT_TTS_PROVIDER=edge`,
 `ACR_LEADS_MODE=dry`, mirror off. Railway rejects the Docker `VOLUME` instruction, so the kb Dockerfile has
