@@ -27,20 +27,26 @@ MANIFEST = OUT / "manifest.json"
 
 # gesture key -> which clip keys may play for it (first existing wins order; all existing are listed)
 GESTURE_SOURCES = {
-    "idle": ["idle", "relax"], "pause": ["idle", "relax", "look_down"],
+    "idle": ["idle", "relax", "body_idle", "sway"], "pause": ["idle", "relax", "look_down", "breathe"],
     "small_nod": ["small_nod", "listening", "attentive"], "nod": ["nod", "small_nod", "agree"], "slow_nod": ["slow_nod", "thank", "apologetic"],
-    "tilt_head": ["tilt_head", "slow_nod", "concerned", "doubt", "turn_left", "turn_right"],
+    "tilt_head": ["tilt_head", "slow_nod", "concerned", "doubt", "turn_left", "turn_right", "shoulder_tilt"],
     "head_wobble": ["head_wobble", "small_nod", "agree"],
-    "look_up": ["look_up", "look_up_long", "look_left", "look_right"], "open_palm": ["open_palm", "lean_close"],
-    "both_hands": ["both_hands", "laugh"], "lean_in": ["lean_in", "both_hands", "lean_close", "attentive"], "greeting": ["greeting"],
-    "surprised": ["surprised", "surprised_up"], "question": ["surprised", "surprised_up", "doubt"], "talking": ["talking"],
+    "look_up": ["look_up", "look_up_long", "look_left", "look_right"], "open_palm": ["open_palm", "lean_close", "explain"],
+    "both_hands": ["both_hands", "laugh", "explain"], "lean_in": ["lean_in", "both_hands", "lean_close", "attentive", "lean_forward"], "greeting": ["greeting"],
+    "surprised": ["surprised", "surprised_up"], "question": ["surprised", "surprised_up", "doubt", "shrug"], "talking": ["talking"],
     # angle / mood clips under their own names too (synth_angle_clips.py), for a persona that emits them directly
     "look_left": ["look_left"], "look_right": ["look_right"], "look_down": ["look_down"], "look_up_long": ["look_up_long"],
     "turn_left": ["turn_left"], "turn_right": ["turn_right"], "lean_close": ["lean_close"], "agree": ["agree"],
     "head_shake": ["head_shake"], "concerned": ["concerned"], "doubt": ["doubt"], "apologetic": ["apologetic"],
-    "thank": ["thank"], "laugh": ["laugh"], "attentive": ["attentive"], "surprised_up": ["surprised_up"], "relax": ["relax"],
+    "thank": ["thank"], "laugh": ["laugh"], "attentive": ["attentive", "sit_up"], "surprised_up": ["surprised_up"],
+    "relax": ["relax", "relax_shoulders"],
+    # body-motion clips (synth_body_clips.py): shoulders / chest / posture move, the head rides on top
+    "body_idle": ["body_idle"], "breathe": ["breathe"], "shrug": ["shrug"], "lean_forward": ["lean_forward"],
+    "sit_up": ["sit_up"], "sway": ["sway"], "shoulder_tilt": ["shoulder_tilt"], "relax_shoulders": ["relax_shoulders"],
+    "explain": ["explain"],
 }
-STATE_SOURCES = {"idle": ["idle", "relax"], "greeting": ["greeting", "idle"], "listening": ["listening", "small_nod", "attentive", "look_down"],
+STATE_SOURCES = {"idle": ["idle", "relax", "body_idle", "sway", "breathe"], "greeting": ["greeting", "idle"],
+                 "listening": ["listening", "small_nod", "attentive", "look_down", "body_idle", "lean_forward"],
                  "thinking": ["look_up", "look_up_long", "look_left", "look_right"], "backchannel": ["head_wobble", "small_nod", "agree"],
                  "speaking": ["talking", "talk_greeting", "talk_ask", "talk_explain", "talk_reassure", "talk_price",
                               "talk_booking", "talk_close"]}

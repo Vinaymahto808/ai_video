@@ -43,6 +43,8 @@ GLANCE_IN, GLANCE_OUT = 0.14, 0.16
 BROW_RAMP = 0.15
 MOUTH_FADE = 0.06
 IDLE_SCALE = 1.0      # multiplier on the idle breathing / drift amplitude
+IDLE_PHASE = 0.0      # seconds added to t for the idle drift: a take with another phase never moves in step with the first
+GESTURE_AMP = 1.0     # multiplier on every gesture track inside a clip (takes use 0.85-1.0: same motion, a little calmer)
 MOUTH_STRENGTH = 1.0  # alpha of a speech mouth shape over the resting mouth (talk clips use ~0.55: less lip/cheek travel)
 
 
@@ -273,13 +275,13 @@ def render(script: Script, kit: Kit, tracks: dict, idle: dict, out: Path) -> int
     cache: dict = {}
     for i in range(n):
         t = i / FPS
-        pitch, roll, dx, dy, zoom = (v * IDLE_SCALE for v in sc.idle_pose(t, idle))
+        pitch, roll, dx, dy, zoom = (v * IDLE_SCALE for v in sc.idle_pose(t + IDLE_PHASE, idle))
         gestures = list(script.nods) if script.nods else (
             [(2.0, script.track), (6.0, script.track)] if script.name == "talking" else
             ([(sc.REST_S, script.track)] if track is not None else []))
         for g in gestures:
             start, tname = g[0], g[1]
-            amp = g[2] if len(g) > 2 else 1.0           # (start, track, amp): amp < 1 = a calmer, smaller gesture
+            amp = GESTURE_AMP * (g[2] if len(g) > 2 else 1.0)           # (start, track, amp): amp < 1 = a calmer, smaller gesture
             slow = g[3] if len(g) > 3 else 1.0          # (start, track, amp, slow): slow > 1 stretches it in time
             tr = tracks[tname]
             p = (t - start) / (tr["dur"] / 1000.0 * slow)

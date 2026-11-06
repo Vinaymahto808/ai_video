@@ -6,26 +6,47 @@
   "states": {
     "idle": [
       "idle.mp4",
-      "relax.mp4"
+      "idle_2.mp4",
+      "idle_3.mp4",
+      "relax.mp4",
+      "body_idle.mp4",
+      "sway.mp4",
+      "breathe.mp4"
     ],
     "greeting": [
       "greeting.mp4",
-      "idle.mp4"
+      "greeting_2.mp4",
+      "greeting_3.mp4",
+      "idle.mp4",
+      "idle_2.mp4",
+      "idle_3.mp4"
     ],
     "listening": [
       "listening.mp4",
+      "listening_2.mp4",
+      "listening_3.mp4",
       "small_nod.mp4",
+      "small_nod_2.mp4",
+      "small_nod_3.mp4",
       "attentive.mp4",
-      "look_down.mp4"
+      "look_down.mp4",
+      "body_idle.mp4",
+      "lean_forward.mp4"
     ],
     "thinking": [
       "look_up.mp4",
+      "look_up_2.mp4",
+      "look_up_3.mp4",
       "look_left.mp4",
       "look_right.mp4"
     ],
     "backchannel": [
       "head_wobble.mp4",
+      "head_wobble_2.mp4",
+      "head_wobble_3.mp4",
       "small_nod.mp4",
+      "small_nod_2.mp4",
+      "small_nod_3.mp4",
       "agree.mp4"
     ],
     "speaking": [
@@ -41,64 +62,110 @@
   "gestures": {
     "idle": [
       "idle.mp4",
-      "relax.mp4"
+      "idle_2.mp4",
+      "idle_3.mp4",
+      "relax.mp4",
+      "body_idle.mp4",
+      "sway.mp4"
     ],
     "pause": [
       "idle.mp4",
+      "idle_2.mp4",
+      "idle_3.mp4",
       "relax.mp4",
-      "look_down.mp4"
+      "look_down.mp4",
+      "breathe.mp4"
     ],
     "small_nod": [
       "small_nod.mp4",
+      "small_nod_2.mp4",
+      "small_nod_3.mp4",
       "listening.mp4",
+      "listening_2.mp4",
+      "listening_3.mp4",
       "attentive.mp4"
     ],
     "nod": [
       "nod.mp4",
+      "nod_2.mp4",
+      "nod_3.mp4",
       "small_nod.mp4",
+      "small_nod_2.mp4",
+      "small_nod_3.mp4",
       "agree.mp4"
     ],
     "slow_nod": [
       "slow_nod.mp4",
+      "slow_nod_2.mp4",
+      "slow_nod_3.mp4",
       "thank.mp4",
       "apologetic.mp4"
     ],
     "tilt_head": [
       "tilt_head.mp4",
+      "tilt_head_2.mp4",
+      "tilt_head_3.mp4",
       "slow_nod.mp4",
-      "concerned.mp4"
+      "slow_nod_2.mp4",
+      "slow_nod_3.mp4",
+      "concerned.mp4",
+      "shoulder_tilt.mp4"
     ],
     "head_wobble": [
       "head_wobble.mp4",
+      "head_wobble_2.mp4",
+      "head_wobble_3.mp4",
       "small_nod.mp4",
+      "small_nod_2.mp4",
+      "small_nod_3.mp4",
       "agree.mp4"
     ],
     "look_up": [
       "look_up.mp4",
+      "look_up_2.mp4",
+      "look_up_3.mp4",
       "look_left.mp4",
       "look_right.mp4"
     ],
     "open_palm": [
       "open_palm.mp4",
-      "lean_close.mp4"
+      "open_palm_2.mp4",
+      "open_palm_3.mp4",
+      "lean_close.mp4",
+      "explain.mp4"
     ],
     "both_hands": [
-      "both_hands.mp4"
+      "both_hands.mp4",
+      "both_hands_2.mp4",
+      "both_hands_3.mp4",
+      "explain.mp4"
     ],
     "lean_in": [
       "lean_in.mp4",
+      "lean_in_2.mp4",
+      "lean_in_3.mp4",
       "both_hands.mp4",
+      "both_hands_2.mp4",
+      "both_hands_3.mp4",
       "lean_close.mp4",
-      "attentive.mp4"
+      "attentive.mp4",
+      "lean_forward.mp4"
     ],
     "greeting": [
-      "greeting.mp4"
+      "greeting.mp4",
+      "greeting_2.mp4",
+      "greeting_3.mp4"
     ],
     "surprised": [
-      "surprised.mp4"
+      "surprised.mp4",
+      "surprised_2.mp4",
+      "surprised_3.mp4"
     ],
     "question": [
-      "surprised.mp4"
+      "surprised.mp4",
+      "surprised_2.mp4",
+      "surprised_3.mp4",
+      "shrug.mp4"
     ],
     "look_left": [
       "look_left.mp4"
@@ -125,10 +192,39 @@
       "thank.mp4"
     ],
     "attentive": [
-      "attentive.mp4"
+      "attentive.mp4",
+      "sit_up.mp4"
     ],
     "relax": [
-      "relax.mp4"
+      "relax.mp4",
+      "relax_shoulders.mp4"
+    ],
+    "body_idle": [
+      "body_idle.mp4"
+    ],
+    "breathe": [
+      "breathe.mp4"
+    ],
+    "shrug": [
+      "shrug.mp4"
+    ],
+    "lean_forward": [
+      "lean_forward.mp4"
+    ],
+    "sit_up": [
+      "sit_up.mp4"
+    ],
+    "sway": [
+      "sway.mp4"
+    ],
+    "shoulder_tilt": [
+      "shoulder_tilt.mp4"
+    ],
+    "relax_shoulders": [
+      "relax_shoulders.mp4"
+    ],
+    "explain": [
+      "explain.mp4"
     ]
   }
 }

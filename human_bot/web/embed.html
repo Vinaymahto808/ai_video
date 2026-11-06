@@ -629,7 +629,13 @@
     clearTimeout(PUP.glanceT);
     const question = /\?\s*$/.test(text || "");
     if (state === "thinking") {
+      // a short look up while she recalls (~0.9 s), then the eyes come back to the customer with a soft face:
+      // staring at the ceiling for the whole wait read as "frozen" rather than "thinking"
       PUP.gaze = X.gaze_up ? "gaze_up" : (X.glance ? "glance" : "gaze_up"); PUP.brows = (X.brows_up || L.brows_up) ? "brows_up" : null; PUP.exprName = null;
+      PUP.glanceT = setTimeout(() => {
+        if (AV.state !== "thinking") return;
+        PUP.gaze = null; PUP.brows = null; PUP.exprName = pick(M.listening, "smile_soft");
+      }, 850 + Math.random() * 250);
     } else if (state === "listening" || state === "idle") {
       PUP.gaze = null; PUP.brows = null;
       PUP.exprName = pick(M.listening, "smile_soft");
@@ -652,6 +658,8 @@
       // between sentences (greeting, backchannel, listening) where the mouth is at rest.
       PUP.exprName = (emotion === "enthusiastic" || emotion === "warm") && X.smile_soft ? "smile_soft" : null;
       PUP.brows = emotion === "concerned" ? ((X.brows_in || L.brows_in) ? "brows_in" : null) : (question && !PUP.exprName && (X.brows_up || L.brows_up)) ? "brows_up" : null;
+      // a "thinking" sentence (estimating, checking) opens with a brief look up, then back to the customer
+      if (emotion === "thinking" && X.gaze_up) { PUP.gaze = "gaze_up"; PUP.glanceT = setTimeout(() => { if (PUP.gaze === "gaze_up") PUP.gaze = null; }, 520); }
     }
     if (emotion) PUP.mood = emotion;
     PUP.restShape = (PUP.mood === "warm" || PUP.mood === "enthusiastic") && PUP.mouths["smile.png"] ? "smile.png" : "X.png";
@@ -734,15 +742,31 @@
      or tilt, then back to the resting state. Runs over the live face too (same #gest layer). */
   const MM = { t: 0 };
   function microMotionStop() { clearTimeout(MM.t); MM.t = 0; }
+  /* one small head motion over the current state, then back to that state's own loop */
+  function nodOnce(cls) {
+    if (!PUP.on || document.hidden) return;
+    const g = $("gest"), prev = AV.state;
+    [...g.classList].filter((c) => c.startsWith("g-")).forEach((c) => g.classList.remove(c));
+    void g.offsetWidth; g.classList.add(cls);
+    g.addEventListener("animationend", () => { if (AV.state === prev) gesturePuppet(prev); }, { once: true });
+  }
+  /* Active listening: a tiny nod in the customer's mid-sentence pauses (at most every 2.6 s), and the eyes
+     come straight back to them when they resume (a glance aside is cut short). The nod at the end of the
+     turn is fired by the VAD at once, before STT returns, so the face answers in 0 ms instead of ~0.5 s. */
+  function listenAck(kind) {
+    if (!PUP.on || document.body.classList.contains("speaking")) return;
+    const now = performance.now();
+    if (kind === "resume") { if (PUP.gaze && PUP.gaze !== "gaze_up") PUP.gaze = null; return; }
+    if (kind === "pause" && now - (MM.ackAt || 0) < 2600) return;
+    MM.ackAt = now;
+    if (AV.state === "listening" || AV.state === "idle" || kind === "end") nodOnce("g-micro");
+  }
   function microMotionStart() {
     microMotionStop();
     MM.t = setTimeout(() => {
-      if (PUP.on && !document.hidden && !document.body.classList.contains("speaking") && (AV.state === "idle" || AV.state === "listening")) {
-        const g = $("gest"), prev = AV.state;
-        const cls = Math.random() < 0.65 ? "g-micro" : "g-mtilt";
-        [...g.classList].filter((c) => c.startsWith("g-")).forEach((c) => g.classList.remove(c));
-        void g.offsetWidth; g.classList.add(cls);
-        g.addEventListener("animationend", () => { if (AV.state === prev) gesturePuppet(prev); }, { once: true });
+      if (PUP.on && !document.hidden && !document.body.classList.contains("speaking") && (AV.state === "idle" || AV.state === "listening")
+          && performance.now() - (MM.ackAt || 0) > 1500) {
+        nodOnce(Math.random() < 0.65 ? "g-micro" : "g-mtilt");
       }
       microMotionStart();
     }, 3500 + Math.random() * 3000);
@@ -1111,7 +1135,7 @@
     if (!mime) return false;
     $("mic").classList.add("rec"); $("mic").classList.remove("hold"); document.body.classList.add("listening");
     setStatus("listening", true); react("listening");
-    let rec = null, chunks = [], speechMs = 0, silenceMs = 0, segStart = 0, last = performance.now(), done = false;
+    let rec = null, chunks = [], speechMs = 0, silenceMs = 0, segStart = 0, last = performance.now(), done = false, acked = false;
     const newSeg = () => {                                   // fresh recorder = fresh WebM header (pre-roll of <4 s)
       if (rec && rec.state !== "inactive") { const old = rec; old.ondataavailable = null; old.stop(); }
       rec = new MediaRecorder(MIC.stream, { mimeType: mime }); chunks = [];
@@ -1134,7 +1158,7 @@
       const pre = early; early = null;
       if (!state.active) return;
       if (blob && blob.size > 1500) {
-        setStatus("thinking", true);
+        setStatus("thinking", true); listenAck("end");      // "got it" nod the instant the customer stops, before STT returns
         let text = pre ? await pre.catch(() => "") : "";
         if (!text) text = await sttUpload(blob);
         if (text) { send(text); return; }
@@ -1152,7 +1176,9 @@
       if (!speechMs) MIC.noise = MIC.noise * 0.97 + lvl * 0.03;                 // adaptive room floor
       const gate = Math.max(0.010, MIC.noise * 3);
       meter(Math.min(1, lvl / (gate * 5)));
-      if (lvl > gate) { speechMs += dt; silenceMs = 0; early = null; } else { silenceMs += dt; if (speechMs < 250 && silenceMs > 400) speechMs = 0; }
+      if (lvl > gate) { if (silenceMs > 200 && speechMs > 300) listenAck("resume"); speechMs += dt; silenceMs = 0; early = null; acked = false; }
+      else { silenceMs += dt; if (speechMs < 250 && silenceMs > 400) speechMs = 0; }
+      if (!acked && speechMs > 1200 && silenceMs > 280 && silenceMs < 600) { acked = true; listenAck("pause"); }   // mid-sentence pause: tiny nod
       if (!speechMs && now - segStart > 4000) newSeg();                        // nobody talking yet: trim the pre-roll
       const len = now - segStart;
       if (speechMs > 300 && silenceMs > 350 && !early && chunks.length) early = sttUpload(new Blob(chunks, { type: mime }));
